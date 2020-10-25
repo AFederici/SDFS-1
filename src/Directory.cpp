@@ -39,7 +39,7 @@ void Directory::remove_file(string filename){
     fseek(p_file,0,SEEK_END);
     int to_remove = ftell(p_file);
     fclose(p_file);
-    remove(get_path(filename));
+    remove(get_path(filename).c_str());
     pthread_mutex_lock(&directory_mutex);
     size += to_remove;
     pthread_mutex_unlock(&directory_mutex);

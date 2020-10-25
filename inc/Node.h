@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <pthread.h>
 #include <time.h>
 #include <signal.h>
@@ -40,7 +41,7 @@ pthread_t threads[8];
 
 void *runUdpServer(void *udpSocket);
 void *runSenderThread(void *node);
-void *runTcpServer(void* tcpSocket)
+void *runTcpServer(void* tcpSocket);
 void *runTcpClient(void *tcpSocket);
 
 class Node {
@@ -65,7 +66,7 @@ public:
 	// (ip,port,timestamp) -> (dir_size, vector [(file, file_heartbeat, status)])
 	map<tuple<string, string, string>, tuple<int, map<string, tuple<int, int>>>> file_system;
 	// file -> ( status, set<replica locations> )
-	map<string, tuple<int, set<tuple<string, string, string>>> replicas_list;
+	map<string, tuple<int, set<tuple<string, string, string>>>> replicas_list;
 
 	Node();
 	Node(ModeType mode);

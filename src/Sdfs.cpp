@@ -33,13 +33,13 @@ void Node::updateDirIntoFileSystem(){
 
 //first arg is node info in string form, not comma seperated
 void Node::readSdfsMessage(string m){
-    Messages msg(message);
+    Messages msg(m);
 	switch (msg.type) {
         case VOTE: {
 			vector<string> address = string_split(msg.payload, "::");
 			//if you're master and someone votes, inform them you are master
 			if (masterInformation.ip.compare(nodeInformation.ip) == 0){
-				Messages msg(VOTEACK, nodeInformation.identity());
+				Messages msg(VOTEACK, nodeInformation.toString());
 				udpServent->sendMessage(address[0], address[1], msg.toString());
 				return;
 			}
@@ -49,13 +49,11 @@ void Node::readSdfsMessage(string m){
         }
         case REPLICATE: {
 			//either file is removed or theres now 4 copies
-			if (get<0>val == 0 || (get<1>val).size() >= 4) return;
-			pthread_mutex_lock(&repair_mutex);
-			if (threads[7] != -1) { pthread_mutex_unlock(&repair_mutex); return;} //repair thread is busy
+			if (get<0>(val) == 0 || (get<1>(val)).size() >= 4) return;
+			if (tcpServent->repairReq.ip.size()) return; //repair thread busy
 			string s = msg.payload + "," + msg.payload;
 			tcpServent.repairReq = Messages(FILEDATA, s);
             pthread_create(threads + 7, NULL, runRepairThread, (void *)tcpServent);
-			pthread_mutex_lock(&repair_mutex);
         }
         case FILESYSTEM: {
             mergeFileSystem(msg.payload);
@@ -97,7 +95,7 @@ vector<tuple<string, string>> Node::getTcpTargets(){
 	for(auto& element: file_system){
 		tuple<string, string, string> keyPair = element.first;
 		if (get<0>(keyPair).compare(nodeInformation.ip)) continue;
-		v.push_back(make_tuple(get<0>keyPair, get<1>keyPair, get<2>keyPair, get<0>(element.second)));
+		v.push_back(make_tuple(get<0>(keyPair), get<1>(keyPair), get<2>(keyPair), get<0>(element.second)));
 	}
 	std::sort(v.begin(), v.end(), TupleCompare());
 	vector<tuple<string, string>> targets;
@@ -106,12 +104,12 @@ vector<tuple<string, string>> Node::getTcpTargets(){
 	int target_num = 0;
 	while (target_num < 4 && index < v.size()){
 		//if fail state find a new option
-		if (get<2>membershipList[make_tuple(get<0>targets[target_num], get<1>targets[target_num], get<2>targets[target_num])])
+		if (get<2>(membershipList[make_tuple(get<0>(targets[target_num]), get<1>(targets[target_num]), get<2>(targets[target_num]))]))
 		{
 			while (index < v.size()){
-				if (!get<2>membershipList[make_tuple(get<0>v[index], get<1>v[index], get<2>v[index])])
+				if (!get<2>(membershipList[make_tuple(get<0>(v[index]), get<1>(v[index]), get<2>(v[index]))]))
 				{
-				targets[target_num] = make_tuple(get<0>v[index], get<1>v[index]);
+				targets[target_num] = make_tuple(get<0>(v[index]), get<1>(v[index]));
 				}
 				index++;
 			}

@@ -10,6 +10,7 @@
 
 using std::string;
 using std::vector;
+using std::tuple_element;
 
 vector<string> splitString(string s, string delimiter);
 string getIP();

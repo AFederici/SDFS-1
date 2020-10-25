@@ -52,32 +52,32 @@ int TcpSocket::outgoingConnection(string host, string port){
 
 int TcpSocket::receivePutRequest(int fd, string target){
     Messages msg;
+	int result = 0;
 	int status = 0;
-	string result = "";
 	bool cond = true;
 	get<0>(dir->file_hearbeats[target])++;
 	get<1>((dir->file_hearbeats[target])) = 1;
 	pthread_mutex_lock(&dir_mutex);
-	std::map<string,string>::iterator it = dir->file_status.find(target);
+	auto it = dir->file_status.find(target);
 	if (it != dir->file_status.end()) result = it->second;
-	cond = (result == READ_LOCK) || (result == WRITE_LOCK);
+	cond = ((result == READLOCK) || (result == WRITELOCK));
 	if (cond){
 		pthread_mutex_unlock(&dir_mutex);
 		while (cond){
 			sleep(1);
 			pthread_mutex_lock(&dir_mutex);
-			std::map<string,string>::iterator it = dir->file_status.find(target);
+			auto it = dir->file_status.find(target);
 			if (it != dir->file_status.end()) result = it->second;
-			cond = (result == READ_LOCK) || (result == WRITE_LOCK);
-			if (!cond) dir->file_status[target] = WRITE_LOCK;
+			cond = (result == READLOCK) || (result == WRITELOCK);
+			if (!cond) dir->file_status[target] = WRITELOCK;
 			pthread_mutex_unlock(&dir_mutex);
 		}
 	}
 	else{
-		dir->file_status[target] = WRITE_LOCK;
+		dir->file_status[target] = WRITELOCK;
 		pthread_mutex_unlock(&dir_mutex);
 	}
-	status = receiveFile(fd, dir->real_path(target))
+	status = receiveFile(fd, dir->real_path(target));
 	pthread_mutex_lock(&dir_mutex);
 	dir->file_status[target] = OPEN;
 	pthread_mutex_unlock(&dir_mutex);
@@ -90,29 +90,26 @@ int TcpSocket::receiveGetRequest(int fd, string target){
 	int result = 0;
 	bool cond = true;
 	pthread_mutex_lock(&dir_mutex);
-	std::map<string,int>::iterator it = dir->file_status.find(target);
-	if (it != dir->file_status.end()) result = it->second;
+	if (dir->file_status.count(target)) result = dir->file_status[target];
 	else {
 		pthread_mutex_unlock(&dir_mutex);
-		pthread_mutex_unlock(&dir_mutex);
-		sendMessage(MISSING, result);
+		sendMessage(fd, MISSING, "");
 		return -1;
 	}
-	cond = (result == WRITE_LOCK);
-	if (!cond) dir->file_status[target] = READ_LOCK;
+	cond = (result == WRITELOCK);
+	if (!cond) dir->file_status[target] = READLOCK;
 	pthread_mutex_unlock(&dir_mutex);
 	while (cond){
 		sleep(1);
 		pthread_mutex_lock(&dir_mutex);
-		std::map<string,int>::iterator it = dir->file_status.find(target);
-		if (it != dir->file_status.end()) result = it->second;
+		if (dir->file_status.count(target)) result = dir->file_status[target];
 		else {
 			pthread_mutex_unlock(&dir_mutex);
-			sendMessage(MISSING, result);
+			sendMessage(fd, MISSING, "");
 			return -1;
 		}
-		cond = (result == WRITE_LOCK);
-		if (!cond) dir->file_status[target] = READ_LOCK;
+		cond = (result == WRITELOCK);
+		if (!cond) dir->file_status[target] = READLOCK;
 		pthread_mutex_unlock(&dir_mutex);
 	}
 	return sendFile(fd, dir->get_path(target), NULL);
@@ -154,9 +151,9 @@ int TcpSocket::sendMessage(int fd, MessageType mt, const char * buffer){
         perror("sendOK: send");
         return -1;
     }
-	pthread_mutex_lock(&mutex);
+	pthread_mutex_lock(&gen_mutex);
 	byteSent += numBytes;
-	pthread_mutex_unlock(&mutex);
+	pthread_mutex_unlock(&gen_mutex);
     return 0;
 }
 
@@ -182,7 +179,7 @@ int TcpSocket::receiveMessage(int fd){
 		dir->file_status.erase(dir->file_status.find(msg.payload));
 		pthread_mutex_unlock(&dir_mutex);
 		dir->remove_file(msg.payload);
-		get<1>((dir->file_hearbeats[target])) = 0;
+		get<1>((dir->file_hearbeats[msg.payload])) = 0;
 		sendOK(fd);
 	}
 	else if (msg.type == FILEGET){
@@ -209,9 +206,9 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 			free(buffer);
 			return -1;
 		}
-		pthread_mutex_lock(&mutex);
+		pthread_mutex_lock(&gen_mutex);
 		byteSent += partialR;
-		pthread_mutex_unlock(&mutex);
+		pthread_mutex_unlock(&gen_mutex);
 	}
 	free(buffer);
 	if (sendMessage(fd, FILEEND, target.c_str())) {
@@ -324,13 +321,12 @@ void *processTcpRequests(void *tcpSocket) {
 	pthread_detach(pthread_self());
 	TcpSocket* tcp = (TcpSocket*) tcpSocket;
 	pthread_mutex_lock(&clients_mutex);
-	int id = tcp->thread_to_ind[pthread_self()];
-	pthread_mutex_lunock(&clients_mutex);
+	int id = tcp->thread_to_ind.find(pthread_self())->second;
+	pthread_mutex_unlock(&clients_mutex);
 	tcp->receiveMessage(tcp->clients[id]);
     close(tcp->clients[id]);
     pthread_mutex_lock(&clients_mutex);
     tcp->clients[id] = -1;
     tcp->clientsCount--;
     pthread_mutex_unlock(&clients_mutex);
-    return ret;
 }

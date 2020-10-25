@@ -16,6 +16,7 @@ using std::map;
 using std::vector;
 using std::cout;
 using std::endl;
+using std::tuple;
 using std::ostringstream;
 static pthread_mutex_t directory_mutex = PTHREAD_MUTEX_INITIALIZER;
 

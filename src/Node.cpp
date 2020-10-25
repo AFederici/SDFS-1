@@ -16,7 +16,7 @@ Node::Node(ModeType mode)
 	prepareToSwitch = false;
 	logWriter = new Logger(LOGGING_FILE_NAME);
 	masterInformation = Member();
-	threads[7] = -1; //used to block off repair node
+	tcpServent->repairReq = Member();
 }
 
 void Node::computeAndPrintBandwidth(double diff)
@@ -77,7 +77,7 @@ void Node::updateNodeHeartbeatAndTime()
 {
 	string startTime = ctime(&startTimestamp);
 	startTime = startTime.substr(0, startTime.find("\n"));
-	tuple<string, string, string> keyTuple(nodeInformation.ip, nodeInformation.port,startTime);
+	tuple<string, string, string> keyTuple(nodeInformation.ip, nodeInformation.udpPort,startTime);
 	tuple<int, int, int> valueTuple(heartbeatCounter, localTimestamp, 0);
 	this->membershipList[keyTuple] = valueTuple;
 }
@@ -94,12 +94,10 @@ string Node::populateMembershipMessage()
 			break;
 
 		default:
-			tuple<string,string,string> mapKey(membershipListEntry[0], membershipListEntry[1], membershipListEntry[2]);
 			string startTime = ctime(&startTimestamp);
 			startTime = startTime.substr(0, startTime.find("\n"));
-			mem_list_to_send += nodeInformation.ip + "," + nodeInformation.port + "," + startTime + ",";
-			mem_list_to_send += to_string(heartbeatCounter) + "," + to_string(0);
-			mem_list_to_send += to_string(get<0>(this->file_system[mapKey])) + "\n"; //piggyback storage with hearbeating
+			mem_list_to_send += nodeInformation.ip + "," + nodeInformation.udpPort + "," + startTime + ",";
+			mem_list_to_send += to_string(heartbeatCounter) + "," + to_string(0) + to_string(get<0>(this->file_system[mapKey])) + "\n";
 			break;
 	}
 	return mem_list_to_send;
@@ -112,7 +110,7 @@ string Node::populateIntroducerMembershipMessage(){
 		tuple<int, int, int> valueTuple = element.second;
 		mem_list_to_send += get<0>(keyTuple) + "," + get<1>(keyTuple) + "," + get<2>(keyTuple) + ",";
 		mem_list_to_send += to_string(get<0>(valueTuple)) + "," + to_string(get<2>(valueTuple));
-		mem_list_to_send += to_string(get<0>(this->file_system[mapKey])) + "\n";
+		mem_list_to_send += to_string(get<0>(this->file_system[keyTuple])) + "\n";
 	}
 	return mem_list_to_send;
 }
@@ -133,10 +131,10 @@ int Node::heartbeatToNode()
 	// 4. do gossiping
 	for (uint i=0; i<targetNodes.size(); i++) {
 		Member destination(get<0>(targetNodes[i]), get<1>(targetNodes[i]));
-		string message = "["+to_string(this->localTimestamp)+"] node "+destination.ip+"/"+destination.port+"/"+get<2>(targetNodes[i]);
+		string message = "["+to_string(this->localTimestamp)+"] node "+destination.ip+"/"+destination.udpPort+"/"+get<2>(targetNodes[i]);
 		this->logWriter->printTheLog(GOSSIPTO, message);
 		Messages msg(HEARTBEAT, mem_list_to_send);
-		udpServent->sendMessage(destination.ip, destination.port, msg.toString());
+		udpServent->sendMessage(destination.ip, destination.udpPort, msg.toString());
 	}
 	return 0;
 }
@@ -150,7 +148,6 @@ void Node::masterDetection(){
 				potential = get<0>(el.first);
 				port = get<1>(el.first);
 			}
-			counter++;
 		}
 	}
 	else { votes.clear(); }
@@ -167,7 +164,7 @@ void Node::masterDetection(){
 				Messages msg(VOTEACK, nodeInformation.identity());
 				for (auto &el : votes){
 					if (get<0>(el).compare(nodeInformation.ip)){
-						udpServent->sendMessage(get<0>el, get<1>el, msg.toString());
+						udpServent->sendMessage(get<0>(el), get<1>(el), msg.toString());
 					}
 				}
 			}
@@ -196,7 +193,7 @@ void Node::orderReplication(){
 	for (auto &el : replicas_list){
 		if (get<0>(el.second) == 0) continue; //bad file status
 		if ((get<1>el.second).size() < 4) {
-			auto it = (get<1>el.second).cbegin();
+			auto it = (get<1>(el.second)).cbegin();
 			int random = rand() % v.size();
 			while (random--) {
 				++it;
@@ -219,7 +216,7 @@ int Node::failureDetection(){
 #ifdef LOG_VERBOSE
 		cout << "checking " << get<0>(keyTuple) << "/" << get<1>(keyTuple) << "/" << get<2>(keyTuple) << endl;
 #endif
-		if ((get<0>(keyTuple).compare(nodeInformation.ip) == 0) && (get<1>(keyTuple).compare(nodeInformation.port) == 0)) {
+		if ((get<0>(keyTuple).compare(nodeInformation.ip) == 0) && (get<1>(keyTuple).compare(nodeInformation.udpPort) == 0)) {
 			// do not check itself
 #ifdef LOG_VERBOSE
 			cout << "skip it" << endl;
@@ -268,16 +265,16 @@ int Node::joinSystem(Member introducer)
 {
 	string mem_list_to_send = populateMembershipMessage();
 	Messages msg(JOIN, mem_list_to_send);
-	string message = "["+to_string(this->localTimestamp)+"] sent a request to "+introducer.ip+"/"+introducer.port+", I am "+nodeInformation.ip+"/"+nodeInformation.port;
+	string message = "["+to_string(this->localTimestamp)+"] sent a request to "+introducer.ip+"/"+introducer.udpPort+", I am "+nodeInformation.ip+"/"+nodeInformation.udpPort;
 	cout << "[JOIN]" << message.c_str() << endl;
 	this->logWriter->printTheLog(JOINGROUP, message);
-	udpServent->sendMessage(introducer.ip, introducer.port, msg.toString());
+	udpServent->sendMessage(introducer.ip, introducer.udpPort, msg.toString());
 	return 0;
 }
 
 int Node::requestSwitchingMode()
 {
-	string message = nodeInformation.ip+","+nodeInformation.port;
+	string message = nodeInformation.ip+","+nodeInformation.udpPort;
 	Messages msg(SWREQ, message);
 	for(auto& element: this->membershipList) {
 		tuple<string,string,string> keyTuple = element.first;
@@ -363,11 +360,11 @@ void Node::processHeartbeat(string message) {
 		int failFlag = stoi(membershipListEntry[4]);
 		tuple<string,string,string> mapKey(membershipListEntry[0], membershipListEntry[1], membershipListEntry[2]);
 
-		if ((get<0>(mapKey).compare(nodeInformation.ip) == 0) && (get<1>(mapKey).compare(nodeInformation.port) == 0)) {
+		if ((get<0>(mapKey).compare(nodeInformation.ip) == 0) && (get<1>(mapKey).compare(nodeInformation.udpPort) == 0)) {
 			// Volunteerily leave if you are marked as failed
 			if(failFlag == 1){
 				this->activeRunning = false;
-				string message = "["+to_string(this->localTimestamp)+"] node "+this->nodeInformation.ip+"/"+this->nodeInformation.port+" is left";
+				string message = "["+to_string(this->localTimestamp)+"] node "+this->nodeInformation.ip+"/"+this->nodeInformation.udpPort+" is left";
 				cout << "[VOLUNTARY LEAVE]" << message.c_str() << endl;
 				this->logWriter->printTheLog(LEAVE, message);
 				return;
@@ -379,9 +376,7 @@ void Node::processHeartbeat(string message) {
 #endif
 			continue;
 		}
-
-		map<tuple<string,string,string>, tuple<int, int, int>>::iterator it;
-		it = this->membershipList.find(mapKey);
+		auto it = this->membershipList.find(mapKey);
 		if (it == this->membershipList.end() && failFlag == 0) {
 			tuple<int, int, int> valueTuple(incomingHeartbeatCounter, localTimestamp, failFlag);
 			this->membershipList[mapKey] = valueTuple;
@@ -429,14 +424,14 @@ void Node::processHeartbeat(string message) {
 		for (uint i=0; i<targetNodes.size(); i++) {
 			Member destination(get<0>(targetNodes[i]), get<1>(targetNodes[i]));
 
-			string message = "["+to_string(this->localTimestamp)+"] node "+destination.ip+"/"+destination.port+"/"+get<2>(targetNodes[i]);
+			string message = "["+to_string(this->localTimestamp)+"] node "+destination.ip+"/"+destination.udpPort+"/"+get<2>(targetNodes[i]);
 #ifdef LOG_VERBOSE
 			cout << "[Gossip]" << message.c_str() << endl;
 #endif
 			this->logWriter->printTheLog(GOSSIPTO, message);
 
 			Messages msg(HEARTBEAT, mem_list_to_send);
-			udpServent->sendMessage(destination.ip, destination.port, msg.toString());
+			udpServent->sendMessage(destination.ip, destination.udpPort, msg.toString());
 
 		}
 	}
@@ -463,7 +458,7 @@ void Node::readMessage(string message){
 			vector<string> fields = splitString(msg.payload, ",");
 			if (fields.size() == 2) {
 				cout << "[SWITCH] got a request from "+fields[0]+"/"+fields[1] << endl;
-				string messageReply = nodeInformation.ip+","+nodeInformation.port;
+				string messageReply = nodeInformation.ip+","+nodeInformation.udpPort;
 				Messages msgReply(SWRESP, messageReply);
 				udpServent->sendMessage(fields[0], fields[1], msgReply.toString());
 				prepareToSwitch = true;
@@ -504,10 +499,10 @@ int main(int argc, char *argv[])
 	Member own(getIP(), UDP_PORT, TCP_PORT, node->localTimestamp, node->heartbeatCounter);
 	node->nodeInformation = own;
 	cout << "Starting Node at " << node->nodeInformation.ip << "/";
-	cout << node->nodeInformation.port << "..." << endl;
+	cout << node->nodeInformation.udpPort << "..." << endl;
 	string startTime = ctime(& node -> startTimestamp);
 	startTime = startTime.substr(0, startTime.find("\n"));
-	tuple<string,string,string> mapKey(own.ip, own.port, startTime);
+	tuple<string,string,string> mapKey(own.ip, own.udpPort, startTime);
 	tuple<int, int, int> valueTuple(own.timestamp, own.heartbeatCounter, 0);
 	node->membershipList[mapKey] = valueTuple;
 	node->debugMembershipList();
@@ -539,14 +534,14 @@ int main(int argc, char *argv[])
 				node->tcpServer->cloesFd(node->tcpServer->serverSocket);
 				pthread_join(threads[2], (void **)&ret);
 				pthread_join(threads[1], (void **)&ret);
-				string message = "["+to_string(node->localTimestamp)+"] node "+node->nodeInformation.ip+"/"+node->nodeInformation.port+" is left";
+				string message = "["+to_string(node->localTimestamp)+"] node "+node->nodeInformation.ip+"/"+node->nodeInformation.udpPort+" is left";
 				cout << "[LEAVE]" << message.c_str() << endl;
 				node->logWriter->printTheLog(LEAVE, message);
 				sleep(2); // wait for logging
 				joined = false;
 			}
 		} else if(cmd == "id"){
-			cout << "ID: (" << node->nodeInformation.ip << ", " << node->nodeInformation.port << ")" << endl;
+			cout << "ID: (" << node->nodeInformation.ip << ", " << node->nodeInformation.udpPort << ")" << endl;
 		} else if(cmd == "member"){
 			node->debugMembershipList();
 		} else if(cmd == "exit"){
@@ -573,7 +568,7 @@ int main(int argc, char *argv[])
 				cout << "---- ls ----";
 				if (replicas_list.count(ss[1])){
 					for (auto &el : replicas_list[ss[1]]){
-						if (get<0>(el.second) cout << Member(get<0> el, get<1>el, get<2>el).toString() << endl;
+						if (get<0>(el.second) cout << Member(get<0>(el), get<1>(el), get<2>(el)).toString() << endl;
 					}
 				}
 			} else{

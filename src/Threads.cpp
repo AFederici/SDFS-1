@@ -24,6 +24,7 @@ void *runRepairThread(void* tcpSocket){
 	int fd = tcpSocket->outgoingConnection(get<0>(target[0]), get<1>(target[1]));
 	tcpSocket->sendPutRequest(fd, tcpSocket->repairReq.payload, tcpSocket->repairReq.payload);
 	close(fd);
+	tcpSocket->repairReq = Message();
 }
 
 //return 0 = fail

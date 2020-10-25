@@ -33,7 +33,7 @@ using std::map;
 #define MAX_CLIENTS 10
 static const char * OK = "OK\n";
 static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t gen_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t dir_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t id_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -49,7 +49,7 @@ public:
 	vector<tuple<string, string>> request_targets;
 	Messages outgoingReq;
 	Messages repairReq;
-	map<int, int> thread_to_ind;
+	map<pthread_t, int> thread_to_ind;
 	unsigned long byteSent;
     Directory * dir;
 	volatile int clientsCount;

@@ -4,7 +4,7 @@ APP := Node
 INC_DIR := ./inc
 CFLAGS := -g -Wall -std=c++11 -I$(INC_DIR)
 LIBS := -lpthread
-SRC_FILES := src/Node.cpp src/Messages.cpp src/Member.cpp src/UdpSocket.cpp src/Threads.cpp src/RandomGenerator.cpp src/Logger.cpp src/TcpSocket.cpp src/Utils.cpp src/Directory.cpp
+SRC_FILES := src/Node.cpp src/Messages.cpp src/Member.cpp src/UdpSocket.cpp src/Threads.cpp src/Sdfs.cpp src/Logger.cpp src/TcpSocket.cpp src/Utils.cpp src/Directory.cpp
 
 .PHONY: clean
 
