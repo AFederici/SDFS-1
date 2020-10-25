@@ -116,8 +116,8 @@ void *runSenderThread(void *node)
 		nodeOwn->localTimestamp++;
 		nodeOwn->heartbeatCounter++;
 		nodeOwn->updateNodeHeartbeatAndTime();
-		nodeOwn->updateDirIntoFileSystem(); //TODO
-		nodeOwn->orderReplication();
+		nodeOwn->updateDirIntoFileSystem();
+		if (nodeOwn->nodeInformation.ip.compare(nodeOwn->masterInformation.ip) == 0) nodeOwn->orderReplication();
 
 		// 3. prepare to send heartbeating, and
 		// 4. do gossiping

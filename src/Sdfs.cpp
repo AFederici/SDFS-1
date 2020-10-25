@@ -36,9 +36,15 @@ void Node::readSdfsMessage(string m){
     Messages msg(message);
 	switch (msg.type) {
         case VOTE: {
-            if (masterInformation) return;
-            if (nodeInformation.ip != maxIP) return;
-            vector<string> address = string_split(msg.payload, "::");
+			vector<string> address = string_split(msg.payload, "::");
+			//if you're master and someone votes, inform them you are master
+			if (masterInformation.ip.compare(nodeInformation.ip) == 0){
+				Messages msg(VOTEACK, nodeInformation.identity());
+				udpServent->sendMessage(address[0], address[1], msg.toString());
+				return;
+			}
+            if (masterInformation.ip.size()) return; //master exists
+            if (nodeInformation.ip != maxIP) return; //ignore if you arent max IP, shouldnt receive vote
             votes.add(make_tuple(address[0], address[1], address[2]));
         }
         case REPLICATE: {
@@ -55,7 +61,7 @@ void Node::readSdfsMessage(string m){
             mergeFileSystem(msg.payload);
         }
         case VOTEACK: {
-            if (masterInformation && (masterInformation.ip) == (nodeInformation.ip)) return;
+            if (masterInformation.ip.size() && (masterInformation.ip) == (nodeInformation.ip)) return;
             vector<string> address = string_split(msg.payload, "::");
             masterInformation = Member(address[0], address[1], address[2]);
         }

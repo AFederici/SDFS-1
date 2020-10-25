@@ -15,7 +15,7 @@ Node::Node(ModeType mode)
 	activeRunning = false;
 	prepareToSwitch = false;
 	logWriter = new Logger(LOGGING_FILE_NAME);
-	masterInformation = NULL;
+	masterInformation = Member();
 	threads[7] = -1; //used to block off repair node
 }
 
@@ -144,7 +144,7 @@ int Node::heartbeatToNode()
 void Node::masterDetection(){
 	string potential = "";
 	string port = "";
-	if (!masterInformation){
+	if (masterInformation.ip.size() == 0){
 		for (auto &el : membershipList){
 			if (get<0>(el.first) > potential){
 				potential = get<0>(el.first);
@@ -258,6 +258,7 @@ int Node::failureDetection(){
 			el.second.erase(removedVec[i]);
 		}
 		this->file_system.erase(removedVec[i]);
+		if (get<0>(removedVec[i]).compare(masterInformation.ip) == 0) masterInformation.ip = "";
 	}
 	return 0;
 }
