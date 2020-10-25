@@ -20,11 +20,11 @@ void *runTcpServer(void* tcpSocket)
 void *runRepairThread(void* tcpSocket){
 	pthread_detach(pthread_self());
 	TcpSocket * tcp = (TcpSocket *) tcpSocket;
-	auto targets = getTcpTargets();
-	int fd = tcpSocket->outgoingConnection(get<0>(target[0]), get<1>(target[1]));
-	tcpSocket->sendPutRequest(fd, tcpSocket->repairReq.payload, tcpSocket->repairReq.payload);
+	auto targets = getTcpTargets(); // where is this function defined"
+	int fd = tcp->outgoingConnection(get<0>(target[0]), get<1>(target[1]));
+	tcp->sendPutRequest(fd, tcp->repairReq.payload, tcp->repairReq.payload); // needs one more arg
 	close(fd);
-	tcpSocket->repairReq = Message();
+	tcp->repairReq = Messages();
 }
 
 //return 0 = fail
@@ -36,7 +36,7 @@ void *runTcpClient(void* tcpSocket)
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	int fileBytes = 0;
 	if (tcp->outgoingReq.type == FILEDEL){
-		if (sendMessage(fd, FILEDEL, tcp->outgoingReq.payload)) free(buffer);close(fd);return 0;
+		if (tcp->sendMessage(fd, FILEDEL, tcp->outgoingReq.payload.c_str())) free(buffer);close(fd);return 0;
 		if ((fileBytes = recv(fd, buffer, 1024, 0)) == -1){
 			perror("write_server_put: recv");free(buffer);close(fd);return 0;
 		}
@@ -49,13 +49,14 @@ void *runTcpClient(void* tcpSocket)
 			free(buffer);close(fd);return 0;
 		}
 	} else if (tcp->outgoingReq.type == DATA){
-		vector<string> ss = string_split(tcp->outgoingReq.payload);
+		vector<string> ss = string_split(tcp->outgoingReq.payload); // splitString in util.h? delimiter needed
 		if (tcp->sendPutRequest(fd, ss[0], ss[1])) { free(buffer);close(fd);return 0; }
 	} else if (tcp->outgoingReq.type == FILEGET){
 		vector<string> ss = string_split(tcp->outgoingReq.payload);
 		if (tcp->sendGetRequest(fd, ss[0], ss[1]), 0) { free(buffer);close(fd);return 0; }
 	}
-	free(buffer);close(fd);return 1;
+	free(buffer);
+	close(fd);//return 1;  I commentd this out
 }
 
 

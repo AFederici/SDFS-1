@@ -45,11 +45,11 @@ string Member::toString()
 
 string Member::tcpId(){
 	string id = ip + "::" + tcpPort + "::" + to_string(timestamp);
-	return id
+	return id;
 }
 
 tuple<string, string, string> Member::identity(){
-	tuple<string, string, string> key(ip, port, to_string(timestamp));
+	tuple<string, string, string> key(ip, udpPort, to_string(timestamp)); // fixed typo
 };
 
 Member::Member(){
