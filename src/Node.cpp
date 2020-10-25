@@ -5,6 +5,8 @@ Node::Node() : Node(ALL2ALL) {}
 
 Node::Node(ModeType mode)
 {
+	Directory * d = new Directory();
+	tcpServent = new TcpSocket(TCP_PORT, d);
 	udpServent = new UdpSocket(UDP_PORT);
 	localTimestamp = 0;
 	heartbeatCounter = 0;
@@ -13,6 +15,7 @@ Node::Node(ModeType mode)
 	activeRunning = false;
 	prepareToSwitch = false;
 	logWriter = new Logger(LOGGING_FILE_NAME);
+	masterInformation = NULL;
 }
 
 void Node::computeAndPrintBandwidth(double diff)
@@ -30,6 +33,43 @@ void Node::computeAndPrintBandwidth(double diff)
 #endif
 		this->logWriter->printTheLog(BANDWIDTH, message);
 	}
+}
+
+vector<tuple<string,string, string>> Node::getRandomNodesToGossipTo()
+{
+    vector<tuple<string, string, string>> availableNodesInfo;
+    vector<tuple<string, string, string>> selectedNodesInfo;
+    vector<int> indexList;
+    int availableNodes = 0;
+    for(auto& element: this->membershipList){
+        tuple<string, string, string> keyPair = element.first;
+        tuple<int, int, int> valueTuple = element.second;
+        //dont gossip to self or failed nodes
+        if(get<0>(keyPair).compare(this->nodeInformation.ip) && (get<2>(valueTuple) != 1)){
+            availableNodesInfo.push_back(keyPair);
+            indexList.push_back(availableNodes++);
+        }
+    }
+    switch (this->runningMode) {
+        case GOSSIP: {
+            srand(time(NULL));
+            // N_b is a predefined number
+            if (availableNodes <= N_b) return availableNodesInfo;
+            int nodeCount = 0;
+            while (nodeCount < N_b) {
+                int randomNum = rand() % availableNodes;
+                selectedNodesInfo.push_back(availableNodesInfo[indexList[randomNum]]);
+                indexList.erase(indexList.begin() + randomNum);
+                availableNodes--;
+                nodeCount++;
+            }
+            return selectedNodesInfo;
+        }
+        //ALL2ALL
+        default: {
+            return availableNodesInfo;
+        }
+    }
 }
 
 void Node::updateNodeHeartbeatAndTime()
@@ -53,10 +93,12 @@ string Node::populateMembershipMessage()
 			break;
 
 		default:
+			tuple<string,string,string> mapKey(membershipListEntry[0], membershipListEntry[1], membershipListEntry[2]);
 			string startTime = ctime(&startTimestamp);
 			startTime = startTime.substr(0, startTime.find("\n"));
 			mem_list_to_send += nodeInformation.ip + "," + nodeInformation.port + "," + startTime + ",";
-			mem_list_to_send += to_string(heartbeatCounter) + "," + to_string(0) + "\n";
+			mem_list_to_send += to_string(heartbeatCounter) + "," + to_string(0);
+			mem_list_to_send += to_string(get<0>(this->file_system[mapKey])) + "\n"; //piggyback storage with hearbeating
 			break;
 	}
 	return mem_list_to_send;
@@ -68,7 +110,8 @@ string Node::populateIntroducerMembershipMessage(){
 		tuple<string, string, string> keyTuple = element.first;
 		tuple<int, int, int> valueTuple = element.second;
 		mem_list_to_send += get<0>(keyTuple) + "," + get<1>(keyTuple) + "," + get<2>(keyTuple) + ",";
-		mem_list_to_send += to_string(get<0>(valueTuple)) + "," + to_string(get<2>(valueTuple)) + "\n";
+		mem_list_to_send += to_string(get<0>(valueTuple)) + "," + to_string(get<2>(valueTuple));
+		mem_list_to_send += to_string(get<0>(this->file_system[mapKey])) + "\n";
 	}
 	return mem_list_to_send;
 }
@@ -86,23 +129,65 @@ int Node::heartbeatToNode()
 	string mem_list_to_send = populateMembershipMessage();
 	vector<tuple<string,string,string>> targetNodes = getRandomNodesToGossipTo();
 
-#ifdef LOG_VERBOSE
-	cout << "pick " << targetNodes.size() << " of " << this->membershipList.size()-1;
-	cout << " members" << endl;
-#endif
-
 	// 4. do gossiping
 	for (uint i=0; i<targetNodes.size(); i++) {
 		Member destination(get<0>(targetNodes[i]), get<1>(targetNodes[i]));
 		string message = "["+to_string(this->localTimestamp)+"] node "+destination.ip+"/"+destination.port+"/"+get<2>(targetNodes[i]);
-#ifdef LOG_VERBOSE
-		cout << "[Gossip]" << message.c_str() << endl;
-#endif
 		this->logWriter->printTheLog(GOSSIPTO, message);
 		Messages msg(HEARTBEAT, mem_list_to_send);
 		udpServent->sendMessage(destination.ip, destination.port, msg.toString());
 	}
 	return 0;
+}
+
+void Node::masterDetection(){
+	string potential = "";
+	string port = "";
+	if (!masterInformation){
+		for (auto &el : membershipList){
+			if (get<0>(el.first) > potential){
+				potential = get<0>(el.first);
+				port = get<1>(el.first);
+			}
+			counter++;
+		}
+	}
+	else { votes.clear(); }
+	if (port.size() > 0) {
+		if (strcmp(potential.c_str(), nodeInformation.id.c_str())){
+			Messages msg(VOTE, nodeInformation.toString());
+			udpServent->sendMessage(potential, port, msg.toString());
+		}
+		else{
+			votes.add(nodeInformation.identity());
+			int alive_nodes = membershipList.size();
+			if (alive_nodes.size() >= 4 && votes.size() > ((alive_nodes / 2) + 1)){
+				masterInformation = nodeInformation;
+				Messages msg(VOTEACK, nodeInformation.identity());
+				for (auto &el : votes){
+					if (get<0>(el).compare(nodeInformation.ip)){
+						udpServent->sendMessage(get<0>el, get<1>el, msg.toString());
+					}
+				}
+			}
+		}
+	}
+}
+
+void Node::orderReplication(){
+	vector<tuple<string, string>> targets = getTcpTargets();
+	int ind = 0;
+	for (auto &el : replicas_list){
+		if (get<0>(el.second) == 0) continue;
+		if ((get<1>el.second).size() != 4) {
+			while ((get<1>el.second).count())
+			Messages msg(INITREPLICATE, el.first);
+			udpServent->sendMessage(get<0>(targets[ind]), get<1>(targets[ind]), msg);
+			udpServent->sendMessage(get<0>(targets[(ind + 1) % targets]), get<1>(targets[(ind + 1) % targets]), msg);
+			udpServent->sendMessage(get<0>(targets[(ind + 2) % targets]), get<1>(targets[(ind + 2) % targets]), msg);
+			ind = (ind + 1) % targets;
+		}
+	}
 }
 
 int Node::failureDetection(){
@@ -152,6 +237,10 @@ int Node::failureDetection(){
 			cout << "[REMOVE]" << message.c_str() << endl;
 			this->logWriter->printTheLog(REMOVE, message);
 		}
+		for (auto &el : this->replicas_list){
+			el.second.erase(removedVec[i]);
+		}
+		this->file_system.erase(removedVec[i]);
 	}
 	return 0;
 }
@@ -202,7 +291,7 @@ int Node::SwitchMyMode()
 	return 0;
 }
 
-int Node::listenForHeartbeats()
+int Node::listen()
 {
 	//look in queue for any strings --> if non empty, we have received a message and need to check the membership list
 	// 1. deepcopy and handle queue
@@ -251,10 +340,7 @@ void Node::processHeartbeat(string message) {
 		}
 		membershipListEntry.clear();
 		membershipListEntry = splitString(list_entry, ",");
-		if (membershipListEntry.size() != 5) {
-			// circumvent craching
-			continue;
-		}
+		if (membershipListEntry.size() < 6) { continue; }
 		int incomingHeartbeatCounter = stoi(membershipListEntry[3]);
 		int failFlag = stoi(membershipListEntry[4]);
 		tuple<string,string,string> mapKey(membershipListEntry[0], membershipListEntry[1], membershipListEntry[2]);
@@ -302,6 +388,9 @@ void Node::processHeartbeat(string message) {
 					if(incomingHeartbeatCounter > currentHeartbeatCounter){
 						get<0>(this->membershipList[mapKey]) = incomingHeartbeatCounter;
 						get<1>(this->membershipList[mapKey]) = localTimestamp;
+						get<0>(this->file_system[mapKey]) = membershipListEntry[5]; //update nodes byte info in terms of files
+
+
 						string message = "["+to_string(this->localTimestamp)+"] node "+get<0>(mapKey)+"/"+get<1>(mapKey)+"/"+get<2>(mapKey)+" from "+to_string(currentHeartbeatCounter)+" to "+to_string(incomingHeartbeatCounter);
 #ifdef LOG_VERBOSE
 						cout << "[UPDATE]" << message.c_str() << endl;
@@ -384,30 +473,17 @@ void Node::readMessage(string message){
 		}
 
 		default:
-			break;
+			readSdfsMessage(message);
 	}
 	//debugMembershipList();
 }
 
 int main(int argc, char *argv[])
 {
-	pthread_t threads[2];
+	ModeType mode = ALL2ALL;
 	int rc;
-	Node *node;
-	cout << "Mode: " << ALL2ALL << "->All-to-All, ";
-	cout << GOSSIP << "->Gossip-style" << endl;
-	if (argc < 2) {
-		node = new Node();
-	} else {
-		ModeType mode = ALL2ALL;
-		if (atoi(argv[1]) == 1) {
-			mode = GOSSIP;
-		}
-		node = new Node(mode);
-	}
-	cout << "Running mode: " << node->runningMode << endl;
-	cout << endl;
-	Member own(getIP(), UDP_PORT, node->localTimestamp, node->heartbeatCounter);
+	Node *node = new Node(mode);
+	Member own(getIP(), UDP_PORT, TCP_PORT, node->localTimestamp, node->heartbeatCounter);
 	node->nodeInformation = own;
 	cout << "Starting Node at " << node->nodeInformation.ip << "/";
 	cout << node->nodeInformation.port << "..." << endl;
@@ -423,14 +499,16 @@ int main(int argc, char *argv[])
 	bool joined = false;
 
 	if ((rc = pthread_create(&threads[0], NULL, runUdpServer, (void *)node->udpServent)) != 0) {
-		cout << "Error:unable to create thread," << rc << endl;
-		exit(-1);
+		cout << "Error:unable to create thread," << rc << endl; exit(-1);
 	}
 
+	if ((rc = pthread_create(&threads[1], NULL, runTcpServer, (void *)node->tcpServent)) != 0) {
+		cout << "Error:unable to create thread," << rc << endl; exit(-1);
+	}
 	while(1){
 		cin >> cmd;
 		if(cmd == "join"){
-			if ((rc = pthread_create(&threads[1], NULL, runSenderThread, (void *)node)) != 0) {
+			if ((rc = pthread_create(&threads[2], NULL, runSenderThread, (void *)node)) != 0) {
 				cout << "Error:unable to create thread," << rc << endl;
 				exit(-1);
 			}
@@ -438,6 +516,10 @@ int main(int argc, char *argv[])
 		} else if(cmd == "leave"){
 			if(joined){
 				node->activeRunning = false;
+				node->tcpServent->end_session[MAX_CLIENTS] = 1;
+				node->tcpServer->dir->clear();
+				node->tcpServer->cloesFd(node->tcpServer->serverSocket);
+				pthread_join(threads[2], (void **)&ret);
 				pthread_join(threads[1], (void **)&ret);
 				string message = "["+to_string(node->localTimestamp)+"] node "+node->nodeInformation.ip+"/"+node->nodeInformation.port+" is left";
 				cout << "[LEAVE]" << message.c_str() << endl;
@@ -449,28 +531,59 @@ int main(int argc, char *argv[])
 			cout << "ID: (" << node->nodeInformation.ip << ", " << node->nodeInformation.port << ")" << endl;
 		} else if(cmd == "member"){
 			node->debugMembershipList();
+		} else if(cmd == "exit"){
+			cout << "exiting..." << endl;
+			break;
 		} else if(cmd == "switch") {
 			if(joined){
 				node->requestSwitchingMode();
 			}
 		} else if(cmd == "mode") {
 			cout << "In " << node->runningMode << " mode" << endl;
-		} else if(cmd == "exit"){
-			cout << "exiting..." << endl;
+		} else if(cmd == "store"){
+			tcpServent->dir->store();
 			break;
 		} else {
-			cout << "[join] join to a group via fixed introducer" << endl;
-			cout << "[leave] leave the group" << endl;
-			cout << "[id] print id (IP/UDP_PORT)" << endl;
-			cout << "[member] print all membership list" << endl;
-			cout << "[switch] switch to other mode (All-to-All to Gossip, and vice versa)" << endl;
-			cout << "[mode] show in 0/1 [All-to-All/Gossip] modes" << endl;
-			cout << "[exit] terminate process" << endl;
-		} // More command line interface if wanted
+			vector<string> ss = splitString(cmd, " ");
+			if (ss[0] == "put"){
+				node->handlePut(ss[1], ss[2]);
+			} else if (ss[0] == "get"){
+				node->handleGet(ss[1], ss[2]);
+			} else if (ss[0] == "delete"){
+				node->handleDelete(ss[1]);
+			} else if (ss[0] == "ls"){
+				cout << "---- ls ----";
+				if (replicas_list.count(ss[1])){
+					for (auto &el : replicas_list[ss[1]]){
+						cout << Member(get<0> el, get<1>el, get<2>el).toString() << endl;
+					}
+				}
+			} else{
+
+				cout << "[join] join to a group via fixed introducer" << endl;
+				cout << "[leave] leave the group" << endl;
+				cout << "[id] print id (IP/UDP_PORT)" << endl;
+				cout << "[member] print all membership list" << endl;
+				cout << "[exit] terminate process" << endl;
+				cout << "[get] [sdfsname] [localfile] retrive data from file [sdfsname] into [localfile]" << endl;
+				cout << "[delete] [sdfsname] remove file [sdfsname] from the system" << endl;
+				cout << "[put] [localfile] [sdfsname] store [localfile] in the file [sdfsname]" << endl;
+				cout << "[ls] [filename] list all machines storing [filename]" << endl;
+				cout << "[store] list all files on this machine" << endl;
+
+			}
+		}
 	}
 
 	pthread_kill(threads[0], SIGUSR1);
-	if(joined) pthread_kill(threads[1], SIGUSR1);
+	pthread_kill(threads[1], SIGUSR1);
+	if(joined) pthread_kill(threads[2], SIGUSR1);
 	pthread_exit(NULL);
 	return 1;
 }
+
+
+
+
+
+//// MP2 API

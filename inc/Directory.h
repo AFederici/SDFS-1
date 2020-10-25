@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <sstream>
 #include <unistd.h>
+#include "Modes.h"
 
 using std::string;
 using std::map;
@@ -16,19 +17,20 @@ using std::vector;
 using std::cout;
 using std::endl;
 using std::ostringstream;
+static pthread_mutex_t directory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-const static char * READ_LOCK = "/";
-const static char * WRITE_LOCK = "//";
-const static char * DELETE_LOCK = "///";
 class Directory{
 public:
 	char * dir; //need to handle sigkill and remove this when node fails
-    map<string,int> file_hearbeats;
-    map<string,string> file_locks;
+    map<string,tuple<int,int>> file_hearbeats; //file -> (hearbeat,status)
+    map<string,int> file_status; //file -> status
+	int size;
     Directory();
     void store();
 	int write_file(FILE * f, char * buf, uint size);
+	void remove_file(string filename);
     string get_path(string filename);
+	void clear();
 };
 
 #endif //DIRECTORY_H

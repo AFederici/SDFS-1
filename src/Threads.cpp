@@ -9,6 +9,46 @@ void *runUdpServer(void *udpSocket)
 	pthread_exit(NULL);
 }
 
+void *runTcpServer(void* tcpSocket)
+{
+	TcpSocket * tcp = (TcpSocket *) tcpSocket;
+	tcp->setupServer();
+	tcp->runServer();
+	pthread_exit(NULL);
+}
+
+//return 0 = fail
+void *runTcpClient(void* tcpSocket)
+{
+	TcpSocket * tcp = (TcpSocket *) tcpSocket;
+	int id = tcp->thread_to_ind[pthread_self()];
+	int fd = tcp->outgoingConnection(tcp->request_targets[id]);
+	char * buffer = (char*)calloc(1,MAXBUFLEN);
+	int fileBytes = 0;
+	if (tcp->outgoingReq.type == FILEDEL){
+		if (sendMessage(fd, FILEDEL, tcp->outgoingReq.payload)) free(buffer);return 0;
+		if ((fileBytes = recv(fd, buffer, 1024, 0)) == -1){
+			perror("write_server_put: recv");free(buffer);return 0;
+		}
+		buffer[fileBytes] = '\0';
+		Messages msg = Messages(buffer);
+		if (strcmp(msg.payload.c_str(), OK)){
+			cout << "DELETION FAILED " << " | " << get<0>(tcp->request_targets[id]) <<
+				"::" << get<1>(tcp->request_targets[id]) << " | " <<
+				tcp->outgoingReq.payload << " | " << msg.payload << endl;
+			free(buffer);return 0;
+		}
+	} else if (tcp->outgoingReq.type == DATA){
+		vector<string> ss = string_split(tcp->outgoingReq.payload);
+		if (tcp->sendPutRequest(fd, ss[0], ss[1])) free(buffer);return 0;
+	} else if (tcp->outgoingReq.type == FILEGET){
+		vector<string> ss = string_split(tcp->outgoingReq.payload);
+		if (tcp->sendGetRequest(fd, ss[0], ss[1]), 0) free(buffer);return 0;
+	}
+	free(buffer);return 1;
+}
+
+
 void testMessages(UdpSocket* udp)
 {
 	sleep(2);
@@ -18,6 +58,18 @@ void testMessages(UdpSocket* udp)
 	sleep(1);
 }
 
+void *testMessages(void* tcp)
+{
+	TcpSocket * t = (TcpSocket *) tcp;
+	sleep(2);
+	cout << "p1" << endl;
+	for (int j = 0; j < 4; j++) {
+		int fd = t->outgoingConnection("127.0.0.1", TCP_PORT);
+		t->sendMessage(fd, ACK, "yoooo AJ");
+		sleep(1);
+	}
+}
+
 /**
  *
  * runSenderThread:
@@ -25,7 +77,6 @@ void testMessages(UdpSocket* udp)
  * 2. merge membership list
  * 3. prepare to send heartbeating
  * 4. do gossiping
- *
  **/
 void *runSenderThread(void *node)
 {
@@ -41,7 +92,7 @@ void *runSenderThread(void *node)
 
 		// 1. deepcopy and handle queue, and
 		// 2. merge membership list
-		nodeOwn->listenForHeartbeats();
+		nodeOwn->listen();
 
 		// Volunteerily leave
 		if(nodeOwn->activeRunning == false){
@@ -50,22 +101,24 @@ void *runSenderThread(void *node)
 
 		//add failure detection in between listening and sending out heartbeats
 		nodeOwn->failureDetection();
+		nodeOwn->masterDetection();
 
 		// keep heartbeating
 		nodeOwn->localTimestamp++;
 		nodeOwn->heartbeatCounter++;
 		nodeOwn->updateNodeHeartbeatAndTime();
+		nodeOwn->updateDirIntoFileSystem(); //TODO
+		nodeOwn->orderReplication();
 
 		// 3. prepare to send heartbeating, and
 		// 4. do gossiping
 		nodeOwn->heartbeatToNode();
+		nodeOwn->directoryToNode();
+
 		time_t endTimestamp;
 		time(&endTimestamp);
 		double diff = difftime(endTimestamp, nodeOwn->startTimestamp);
 		nodeOwn->computeAndPrintBandwidth(diff);
-#ifdef LOG_VERBOSE
-		cout << endl;
-#endif
 		if (nodeOwn->prepareToSwitch) {
 			cout << "[SWITCH] I am going to swtich my mode in " << T_switch << "s" << endl;
 			nodeOwn->SwitchMyMode();

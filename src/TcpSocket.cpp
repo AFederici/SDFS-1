@@ -21,6 +21,9 @@ void closeFd(int fd){
     }
     close(fd);
 }
+int TcpSocket::outgoingConnection(tuple<string,string> address){
+	return outgoingConnection(get<0>address, get<1>address);
+}
 
 int TcpSocket::outgoingConnection(string host, string port){
 	struct addrinfo hints;
@@ -50,65 +53,72 @@ int TcpSocket::outgoingConnection(string host, string port){
 int TcpSocket::receivePutRequest(int fd, string target){
     Messages msg;
 	int status = 0;
-	string real_path = dir->get_path(target);
 	string result = "";
 	bool cond = true;
-	dir->file_hearbeats[real_path]++;
+	get<0>(dir->file_hearbeats[target])++;
+	get<1>((dir->file_hearbeats[target])) = 1;
 	pthread_mutex_lock(&dir_mutex);
-	std::map<string,string>::iterator it = dir->file_locks.find(real_path);
-	if (it != dir->file_locks.end()) result = it->second;
-	pthread_mutex_unlock(&dir_mutex);
-	cond = strcmp(result.c_str(), READ_LOCK) || strcmp(result.c_str(), WRITE_LOCK);
-	while (cond){
-		sleep(1);
-		pthread_mutex_lock(&dir_mutex);
-		std::map<string,string>::iterator it = dir->file_locks.find(real_path);
-		if (it != dir->file_locks.end()) result = it->second;
-		cond = strcmp(result.c_str(), READ_LOCK) || strcmp(result.c_str(), WRITE_LOCK);
-		if (!cond) dir->file_locks[real_path] = WRITE_LOCK;
+	std::map<string,string>::iterator it = dir->file_status.find(target);
+	if (it != dir->file_status.end()) result = it->second;
+	cond = (result == READ_LOCK) || (result == WRITE_LOCK);
+	if (cond){
+		pthread_mutex_unlock(&dir_mutex);
+		while (cond){
+			sleep(1);
+			pthread_mutex_lock(&dir_mutex);
+			std::map<string,string>::iterator it = dir->file_status.find(target);
+			if (it != dir->file_status.end()) result = it->second;
+			cond = (result == READ_LOCK) || (result == WRITE_LOCK);
+			if (!cond) dir->file_status[target] = WRITE_LOCK;
+			pthread_mutex_unlock(&dir_mutex);
+		}
+	}
+	else{
+		dir->file_status[target] = WRITE_LOCK;
 		pthread_mutex_unlock(&dir_mutex);
 	}
-	dir->file_locks[real_path] = WRITE_LOCK;
-
-	if ((status = receiveFile(fd, real_path))){
-		dir->file_hearbeats[real_path]--;
-	}
+	status = receiveFile(fd, dir->real_path(target))
 	pthread_mutex_lock(&dir_mutex);
-	dir->file_locks[real_path] = READ_LOCK;
+	dir->file_status[target] = OPEN;
 	pthread_mutex_unlock(&dir_mutex);
+	if (status == -2) { cout << "MISSING FILE " << target << endl; fflush(stdout);}
 	return status;
 }
 
 int TcpSocket::receiveGetRequest(int fd, string target){
 	Messages msg;
-	string real_path = dir->get_path(target);
-	string result = "";
+	int result = 0;
 	bool cond = true;
 	pthread_mutex_lock(&dir_mutex);
-	std::map<string,string>::iterator it = dir->file_locks.find(real_path);
-	if (it != dir->file_locks.end()) result = it->second;
-	pthread_mutex_unlock(&dir_mutex);
-	if (strcmp(result.c_str(), DELETE_LOCK)){
-		pthread_mutex_lock(&dir_mutex);
-		dir->file_locks.erase(dir->file_locks.find(real_path));
-		dir->file_hearbeats.erase(dir->file_hearbeats.find(real_path));
+	std::map<string,int>::iterator it = dir->file_status.find(target);
+	if (it != dir->file_status.end()) result = it->second;
+	else {
 		pthread_mutex_unlock(&dir_mutex);
+		pthread_mutex_unlock(&dir_mutex);
+		sendMessage(MISSING, result);
 		return -1;
 	}
-	cond = strcmp(result.c_str(), WRITE_LOCK);
+	cond = (result == WRITE_LOCK);
+	if (!cond) dir->file_status[target] = READ_LOCK;
+	pthread_mutex_unlock(&dir_mutex);
 	while (cond){
 		sleep(1);
 		pthread_mutex_lock(&dir_mutex);
-		std::map<string,string>::iterator it = dir->file_locks.find(real_path);
-		if (it != dir->file_locks.end()) result = it->second;
-		cond = strcmp(result.c_str(), WRITE_LOCK);
-		if (!cond) dir->file_locks[real_path] = READ_LOCK;
+		std::map<string,int>::iterator it = dir->file_status.find(target);
+		if (it != dir->file_status.end()) result = it->second;
+		else {
+			pthread_mutex_unlock(&dir_mutex);
+			sendMessage(MISSING, result);
+			return -1;
+		}
+		cond = (result == WRITE_LOCK);
+		if (!cond) dir->file_status[target] = READ_LOCK;
 		pthread_mutex_unlock(&dir_mutex);
 	}
 	return sendFile(fd, dir->get_path(target), NULL);
 }
 
-int TcpSocket::sendGet(int fd, string filename, string local_file){
+int TcpSocket::sendGetRequest(int fd, string filename, string local_file, int node_initiated){
 	int numBytes = 0;
 	if ((numBytes = sendMessage(fd, FILEGET, filename.c_str()))) {
         perror("sendGet: send");
@@ -120,7 +130,7 @@ int TcpSocket::sendGet(int fd, string filename, string local_file){
 int TcpSocket::sendPutRequest(int fd, string local, string target){
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	int fileBytes = 0;
-	if (sendFile(fd, local, target)) return -1;;
+	if (sendFile(fd, dir->get_path(local), target)) return -1;;
 	if ((fileBytes = recv(fd, buffer, 1024, 0)) == -1){
 		perror("write_server_put: recv");
 		return -1;
@@ -130,7 +140,7 @@ int TcpSocket::sendPutRequest(int fd, string local, string target){
 	if (strcmp(msg.payload.c_str(), OK)){
 		perror("write_server_put: recv");
 		free(buffer);
-		return -1;
+		return -2;
 	}
 	free(buffer);
 	return 0;
@@ -140,16 +150,16 @@ int TcpSocket::sendMessage(int fd, MessageType mt, const char * buffer){
     int numBytes = 0;
     Messages msg = Messages(mt, buffer).toString();
     if ((numBytes = send(fd, msg.toString().c_str(), msg.toString().size(), 0)) == -1) {
-        perror("sendAck: send");
+        perror("sendOK: send");
         return -1;
     }
-	pthread_mutex_lock(&bytes_counter_mutex);
+	pthread_mutex_lock(&mutex);
 	byteSent += numBytes;
-	pthread_mutex_unlock(&bytes_counter_mutex);
+	pthread_mutex_unlock(&mutex);
     return 0;
 }
 
-int TcpSocket::sendAck(int fd){
+int TcpSocket::sendOK(int fd){
     return sendMessage(fd, ACK, OK);
 }
 
@@ -161,14 +171,18 @@ int TcpSocket::receiveMessage(int fd){
         return -1;
     }
     Messages msg = Messages(buffer);
+	cout << msg.toString() << endl;
+	fflush(stdout);
 	if (msg.type == FILEDATA){
-		receivePutRequest(fd, msg.payload);
+		if (receivePutRequest(fd, msg.payload) == 0) sendOK(fd);
 	}
 	else if (msg.type == FILEDEL){
 		pthread_mutex_lock(&dir_mutex);
-		dir->file_locks[msg.payload] = DELETE_LOCK;
+		dir->file_status.erase(dir->file_status.find(msg.payload));
 		pthread_mutex_unlock(&dir_mutex);
-		sendAck(fd);
+		dir->remove_file(msg.payload);
+		get<1>((dir->file_hearbeats[target])) = 0;
+		sendOK(fd);
 	}
 	else if (msg.type == FILEGET){
 		receiveGetRequest(fd, msg.payload);
@@ -194,6 +208,9 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 			free(buffer);
 			return -1;
 		}
+		pthread_mutex_lock(&mutex);
+		byteSent += partialR;
+		pthread_mutex_unlock(&mutex);
 	}
 	free(buffer);
 	if (sendMessage(fd, FILEEND, target.c_str())) {
@@ -217,6 +234,11 @@ int TcpSocket::receiveFile(int fd, string local_file){
 			remove(local_file.c_str());
 			rename(tmp.c_str(), local_file.c_str());
 			return 0;
+		}
+		if (msg.type == MISSING){
+			fclose(f);
+			remove(local_file.c_str());
+			return -2;
 		}
         if (dir->write_file(f, buffer + msg.fillerLength(), numBytes - msg.fillerLength())) break;
     }
@@ -282,9 +304,12 @@ void TcpSocket::runServer(){
     			if (clients[i] == -1) {
     				clients[i] = accept_fd;
     				j = i;
-					self_index = j;
-    				pthread_create(pids + j, NULL, processTcpRequests, (void *)this);
-    				break;
+					int result = 0;
+					pthread_mutex_lock(&id_mutex);
+    				result = pthread_create(pids + j, NULL, processTcpRequests, (void *)this);
+					if (!result) { thread_to_ind[pids[j]] = j; }
+					pthread_mutex_unlock(&id_mutex);
+					if (result) break;
     			}
     		}
     	}
@@ -297,6 +322,9 @@ void TcpSocket::runServer(){
 void *processTcpRequests(void *tcpSocket) {
 	TcpSocket* tcp;
 	tcp = (TcpSocket*) tcpSocket;
+	int id = tcp->self_index;
+	pthread_mutex_unlock(&mutex);
+	pthread_detach(pthread_self());
 	void* ret = (void*) tcp->receiveMessage(tcp->clients[tcp->self_index]);
     //printf("User %d left\n", (int)tcpSocket->self_index);
     close(tcp->clients[tcp->self_index]);

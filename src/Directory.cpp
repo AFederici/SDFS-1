@@ -7,6 +7,7 @@ Directory::Directory(){
 void Directory::store(){
     cout << "[STORE] " << endl;
     for(auto& element: file_hearbeats){
+        if (get<1>(element.second) == 0) continue;
         cout << "FILE - " << element.first.c_str() << endl;
     }
 }
@@ -21,6 +22,9 @@ int Directory::write_file(FILE * f, char * buf, uint size){
 		}
 		else written += actuallyWritten;
 	}
+    pthread_mutex_lock(&directory_mutex);
+    size += written;
+    pthread_mutex_unlock(&directory_mutex);
     return 0;
 }
 
@@ -28,4 +32,19 @@ string Directory::get_path(string filename){
     ostringstream stringStream;
     stringStream << dir << "/" << filename;
     return stringStream.str();
+}
+
+void Directory::remove_file(string filename){
+    FILE *p_file = fopen(get_path(filename).c_str(),"rb");
+    fseek(p_file,0,SEEK_END);
+    int to_remove = ftell(p_file);
+    fclose(p_file);
+    remove(get_path(filename));
+    pthread_mutex_lock(&directory_mutex);
+    size += to_remove;
+    pthread_mutex_unlock(&directory_mutex);
+}
+
+void Directory::clear(){
+    remove(dir);
 }

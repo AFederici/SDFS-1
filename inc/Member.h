@@ -12,15 +12,19 @@ using std::to_string;
 class Member {
 public:
 	string ip;
-	string port;
+	string udpPort;
+	string tcpPort;
 	int timestamp;
 	int heartbeatCounter;
 	int failed_flag;
+	tuple<string, string, string> identity();
 	Member();
-	Member(string nodeIp, string nodePort, int nodeTimestamp, int heartbeatCounter);
-	Member(string nodeIp, string nodePort);
-	Member(string nodeIp, string nodePort, int nodeTimestamp);
+	Member(string nodeIp, string udpPort, int nodeTimestamp, int heartbeatCounter);
+	Member(string nodeIp, string udpPort);
+	Member(string nodeIp, string udpPort, int nodeTimestamp);
+	Member(string nodeIp, string udpPort, string tcpPort, int nodeTimestamp, int heartbeatCounter);
 	string toString();
+	string tcpId();
 };
 
 
