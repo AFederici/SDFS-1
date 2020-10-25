@@ -118,7 +118,7 @@ int TcpSocket::receiveGetRequest(int fd, string target){
 	return sendFile(fd, dir->get_path(target), NULL);
 }
 
-int TcpSocket::sendGetRequest(int fd, string filename, string local_file, int node_initiated){
+int TcpSocket::sendGetRequest(int fd, string filename, string local_file){
 	int numBytes = 0;
 	if ((numBytes = sendMessage(fd, FILEGET, filename.c_str()))) {
         perror("sendGet: send");
@@ -127,10 +127,11 @@ int TcpSocket::sendGetRequest(int fd, string filename, string local_file, int no
 	return receiveFile(fd, local_file);
 }
 
-int TcpSocket::sendPutRequest(int fd, string local, string target){
+int TcpSocket::sendPutRequest(int fd, string local, string target, int node_initiated){
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	int fileBytes = 0;
-	if (sendFile(fd, dir->get_path(local), target)) return -1;;
+	if (node_initiated) local = dir->get_path(local);
+	if (sendFile(fd, local, target)) return -1;;
 	if ((fileBytes = recv(fd, buffer, 1024, 0)) == -1){
 		perror("write_server_put: recv");
 		return -1;
@@ -320,16 +321,15 @@ void TcpSocket::runServer(){
 //sendTCPRequests -> utilize message queue maybe and use semaphore or whatever
 
 void *processTcpRequests(void *tcpSocket) {
-	TcpSocket* tcp;
-	tcp = (TcpSocket*) tcpSocket;
-	int id = tcp->self_index;
-	pthread_mutex_unlock(&mutex);
 	pthread_detach(pthread_self());
-	void* ret = (void*) tcp->receiveMessage(tcp->clients[tcp->self_index]);
-    //printf("User %d left\n", (int)tcpSocket->self_index);
-    close(tcp->clients[tcp->self_index]);
+	TcpSocket* tcp = (TcpSocket*) tcpSocket;
+	pthread_mutex_lock(&clients_mutex);
+	int id = tcp->thread_to_ind[pthread_self()];
+	pthread_mutex_lunock(&clients_mutex);
+	tcp->receiveMessage(tcp->clients[id]);
+    close(tcp->clients[id]);
     pthread_mutex_lock(&clients_mutex);
-    tcp->clients[tcp->self_index] = -1;
+    tcp->clients[id] = -1;
     tcp->clientsCount--;
     pthread_mutex_unlock(&clients_mutex);
     return ret;

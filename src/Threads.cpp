@@ -17,6 +17,15 @@ void *runTcpServer(void* tcpSocket)
 	pthread_exit(NULL);
 }
 
+void *runRepairThread(void* tcpSocket){
+	pthread_detach(pthread_self());
+	TcpSocket * tcp = (TcpSocket *) tcpSocket;
+	auto targets = getTcpTargets();
+	int fd = tcpSocket->outgoingConnection(get<0>(target[0]), get<1>(target[1]));
+	tcpSocket->sendPutRequest(fd, tcpSocket->repairReq.payload, tcpSocket->repairReq.payload);
+	close(fd);
+}
+
 //return 0 = fail
 void *runTcpClient(void* tcpSocket)
 {
@@ -26,9 +35,9 @@ void *runTcpClient(void* tcpSocket)
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	int fileBytes = 0;
 	if (tcp->outgoingReq.type == FILEDEL){
-		if (sendMessage(fd, FILEDEL, tcp->outgoingReq.payload)) free(buffer);return 0;
+		if (sendMessage(fd, FILEDEL, tcp->outgoingReq.payload)) free(buffer);close(fd);return 0;
 		if ((fileBytes = recv(fd, buffer, 1024, 0)) == -1){
-			perror("write_server_put: recv");free(buffer);return 0;
+			perror("write_server_put: recv");free(buffer);close(fd);return 0;
 		}
 		buffer[fileBytes] = '\0';
 		Messages msg = Messages(buffer);
@@ -36,16 +45,16 @@ void *runTcpClient(void* tcpSocket)
 			cout << "DELETION FAILED " << " | " << get<0>(tcp->request_targets[id]) <<
 				"::" << get<1>(tcp->request_targets[id]) << " | " <<
 				tcp->outgoingReq.payload << " | " << msg.payload << endl;
-			free(buffer);return 0;
+			free(buffer);close(fd);return 0;
 		}
 	} else if (tcp->outgoingReq.type == DATA){
 		vector<string> ss = string_split(tcp->outgoingReq.payload);
-		if (tcp->sendPutRequest(fd, ss[0], ss[1])) free(buffer);return 0;
+		if (tcp->sendPutRequest(fd, ss[0], ss[1])) { free(buffer);close(fd);return 0; }
 	} else if (tcp->outgoingReq.type == FILEGET){
 		vector<string> ss = string_split(tcp->outgoingReq.payload);
-		if (tcp->sendGetRequest(fd, ss[0], ss[1]), 0) free(buffer);return 0;
+		if (tcp->sendGetRequest(fd, ss[0], ss[1]), 0) { free(buffer);close(fd);return 0; }
 	}
-	free(buffer);return 1;
+	free(buffer);close(fd);return 1;
 }
 
 

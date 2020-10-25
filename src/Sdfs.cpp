@@ -23,7 +23,6 @@ string Node::populateFileLocationMessage(){
 }
 
 //first arg is node info in string form, not comma seperated
-//TODO
 void Node::readSdfsMessage(string m){
     Messages msg(message);
 	switch (msg.type) {
@@ -34,25 +33,37 @@ void Node::readSdfsMessage(string m){
             votes.add(make_tuple(address[0], address[1], address[2]));
         }
         case REPLICATE: {
-            break;
+			//either file is removed or theres now 4 copies
+			if (get<0>val == 0 || (get<1>val).size() >= 4) return;
+			pthread_mutex_lock(&repair_mutex);
+			if (threads[7] != -1) { pthread_mutex_unlock(&repair_mutex); return;} //repair thread is busy
+			string s = msg.payload + "," + msg.payload;
+			tcpServent.repairReq = Messages(FILEDATA, s);
+            pthread_create(threads + 7, NULL, runRepairThread, (void *)tcpServent);
+			pthread_mutex_lock(&repair_mutex);
         }
         case FILESYSTEM: {
             break;
-        }
-        case REPLICACK: {
-            if (masterInformation && (masterInformation.ip) != (nodeInformation.ip)) return;
-            vector<string> ss = string_split(msg.payload, ",");
-            Messages resp(REPLICATE, ss[1]);
-            vector<string> address = string_split(ss[0], "::");
-            udpServent->sendMessage(address[0], address[1], resp.toString());
         }
         case VOTEACK: {
             if (masterInformation && (masterInformation.ip) == (nodeInformation.ip)) return;
             vector<string> address = string_split(msg.payload, "::");
             masterInformation = Member(address[0], address[1], address[2]);
         }
+		/*
+		case REPLICACK: {
+            if (masterInformation && (masterInformation.ip) != (nodeInformation.ip)) return;
+            vector<string> ss = string_split(msg.payload, ",");
+            Messages resp(REPLICATE, ss[1]);
+            vector<string> address = string_split(ss[0], "::");
+            udpServent->sendMessage(address[0], address[1], resp.toString());
+        }
         case INITREPLICATE: {
             if (masterInformation && (masterInformation.ip) == (nodeInformation.ip)) return;
+			pthread_mutex_lock(&repair_mutex);
+			int val = threads[7];
+			pthread_mutex_unlock(&repair_mutex);
+			if (val != -1) return; //repair thread is busy
             tuple<int, set<tuple<string, string, string>> val = replicas_list[msg.payload];
             //either file is removed, theres now 4 copies, or we already have it
             if (get<0>val == 0 || (get<1>val).size() >= 4 || (get<1>val).count(nodeInformation.identity())) return;
@@ -60,7 +71,8 @@ void Node::readSdfsMessage(string m){
             Messages resp(REPLICACK, payload);
             udpServent->sendMessage(fields[0], fields[1], resp.toString());
         }
-        case default : {}
+		*/
+		case default : {}
 }
 
 
@@ -69,8 +81,9 @@ vector<tuple<string, string>> Node::getTcpTargets(){
 	vector<string, string, string, int> v;
 	for(auto& element: file_system){
 		tuple<string, string, string> keyPair = element.first;
-		if (get<2>element.second) continue;
+		if (get<0>(keyPair).compare(nodeInformation.ip)) continue;
 		v.push_back(make_tuple(get<0>keyPair, get<1>keyPair, get<2>keyPair, get<0>(element.second)));
+	}
 	std::sort(v.begin(), v.end(), TupleCompare());
 	vector<tuple<string, string>> targets;
 	for (int i = 0; i < 4; i++) targets.push_back(make_tuple(get<0>(v[i]), get<1>(v[i])));

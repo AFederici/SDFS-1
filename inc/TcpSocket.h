@@ -48,6 +48,7 @@ public:
 
 	vector<tuple<string, string>> request_targets;
 	Messages outgoingReq;
+	Messages repairReq;
 	map<int, int> thread_to_ind;
 	unsigned long byteSent;
     Directory * dir;
@@ -60,8 +61,8 @@ public:
 	int outgoingConnection(string host, string port);
 	int receivePutRequest(int fd, string target);
 	int receiveGetRequest(int fd, string target);
-	int sendGetRequest(int fd, string target, string local, int node_initiated);
-	int sendPutRequest(int fd, string local, string target);
+	int sendGetRequest(int fd, string target, string local);
+	int sendPutRequest(int fd, string local, string target, int node_initiated);
 	int sendMessage(int fd, MessageType mt, const char * buffer);
 	int sendOK(int fd);
 	int receiveMessage(int fd);

@@ -35,7 +35,8 @@ using namespace std;
 
 #define T_switch 3 // in seconds
 
-pthread_t threads[7];
+static pthread_mutex_t repair_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_t threads[8];
 
 void *runUdpServer(void *udpSocket);
 void *runSenderThread(void *node);

@@ -16,6 +16,7 @@ Node::Node(ModeType mode)
 	prepareToSwitch = false;
 	logWriter = new Logger(LOGGING_FILE_NAME);
 	masterInformation = NULL;
+	threads[7] = -1; //used to block off repair node
 }
 
 void Node::computeAndPrintBandwidth(double diff)
@@ -173,7 +174,7 @@ void Node::masterDetection(){
 		}
 	}
 }
-
+/*
 void Node::orderReplication(){
 	vector<tuple<string, string>> targets = getTcpTargets();
 	int ind = 0;
@@ -186,6 +187,22 @@ void Node::orderReplication(){
 			udpServent->sendMessage(get<0>(targets[(ind + 1) % targets]), get<1>(targets[(ind + 1) % targets]), msg);
 			udpServent->sendMessage(get<0>(targets[(ind + 2) % targets]), get<1>(targets[(ind + 2) % targets]), msg);
 			ind = (ind + 1) % targets;
+		}
+	}
+}
+*/
+
+void Node::orderReplication(){
+	for (auto &el : replicas_list){
+		if (get<0>(el.second) == 0) continue; //bad file status
+		if ((get<1>el.second).size() < 4) {
+			auto it = (get<1>el.second).cbegin();
+			int random = rand() % v.size();
+			while (random--) {
+				++it;
+			}
+			Messages msg(REPLICATE, el.first);
+			udpServent->sendMessage(get<0>(*it), get<1>(*it), msg);
 		}
 	}
 }
