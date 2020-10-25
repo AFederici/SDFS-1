@@ -140,7 +140,26 @@ void Node::threadConsistency(){
 }
 
 void Node::mergeFileSystem(string m){
-
+	vector<string> incomingUpdates = splitString(m, "\n");
+	vector<string> entry;
+	for(string list_entry: incomingUpdates) {
+		if (list_entry.size() == 0) continue;
+		entry.clear();
+		entry = splitString(list_entry, ",");
+		if (entry.size() < 4) continue;
+		vector<string> address = string_split(entry[0]);
+		string file = entry[1];
+		int status = stoi(entry[2]);
+		int hb = stoi(entry[3]);
+		tuple<string,string,string> mapKey(address[0], address[1], address[2]);
+		if ((get<0>(mapKey).compare(nodeInformation.ip) == 0) continue;
+		map<string, tuple<int,int>> val = get<1>(file_system[mapKey]);
+		if (!val.count(file) || hb > get<0>(val[file])){ //doesnt exist or is being updated
+			val[file] = make_tuple(hb, status);
+			get<0>(replicas_list[file]) = status;
+			get<1>(replicas_list[file]).insert(mapKey);
+		}
+	}
 }
 
 void Node::handlePut(string s1, string s2){
