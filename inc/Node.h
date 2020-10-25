@@ -96,6 +96,7 @@ private:
 	void handleDelete(string s1);
 	void setTcpTargets();
 	void threadConsistency();
+	void mergeFileSystem(string m);
 };
 
 #endif //NODE_H

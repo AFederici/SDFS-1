@@ -572,7 +572,7 @@ int main(int argc, char *argv[])
 				cout << "---- ls ----";
 				if (replicas_list.count(ss[1])){
 					for (auto &el : replicas_list[ss[1]]){
-						cout << Member(get<0> el, get<1>el, get<2>el).toString() << endl;
+						if (get<0>(el.second) cout << Member(get<0> el, get<1>el, get<2>el).toString() << endl;
 					}
 				}
 			} else{

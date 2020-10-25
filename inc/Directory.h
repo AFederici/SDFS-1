@@ -22,8 +22,8 @@ static pthread_mutex_t directory_mutex = PTHREAD_MUTEX_INITIALIZER;
 class Directory{
 public:
 	char * dir; //need to handle sigkill and remove this when node fails
-    map<string,tuple<int,int>> file_hearbeats; //file -> (hearbeat,status)
-    map<string,int> file_status; //file -> status
+    map<string,tuple<int,int>> file_hearbeats; //file -> (hearbeat,alive or dead)
+    map<string,int> file_status; //file -> operation status
 	int size;
     Directory();
     void store();

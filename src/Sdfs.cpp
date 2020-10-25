@@ -22,6 +22,15 @@ string Node::populateFileLocationMessage(){
 	return to_send;
 }
 
+void Node::updateDirIntoFileSystem(){
+	tuple<int, map<string, tuple<int, int>>> items = file_system[nodeInformation.identity()];
+	get<1>(items) = tcpSocket->dir.file_heartbeats;
+	for (auto &el : get<1>(items)){
+		get<0>(replicas_list[el.first]) = get<1>(el.second);
+		get<1>(replicas_list[el.first]).insert(nodeInformation.identity());
+	}
+}
+
 //first arg is node info in string form, not comma seperated
 void Node::readSdfsMessage(string m){
     Messages msg(message);
@@ -43,7 +52,7 @@ void Node::readSdfsMessage(string m){
 			pthread_mutex_lock(&repair_mutex);
         }
         case FILESYSTEM: {
-            break;
+            mergeFileSystem(msg.payload);
         }
         case VOTEACK: {
             if (masterInformation && (masterInformation.ip) == (nodeInformation.ip)) return;
@@ -128,6 +137,10 @@ void Node::threadConsistency(){
 		}
 	}
 	free(t);
+}
+
+void Node::mergeFileSystem(string m){
+
 }
 
 void Node::handlePut(string s1, string s2){
