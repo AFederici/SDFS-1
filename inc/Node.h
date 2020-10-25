@@ -83,6 +83,10 @@ public:
 	void masterDetection();
 	void orderReplication(); //for master
 	void updateDirIntoFileSystem();
+	// switched to public functions
+	void handlePut(string s1, string s2);
+	void handleGet(string s1, string s2);
+	void handleDelete(string s1);
 
 private:
 	string populateMembershipMessage();
@@ -92,9 +96,7 @@ private:
 	void processHeartbeat(string message);
 	vector<tuple<string,string, string>> getRandomNodesToGossipTo();
 
-	void handlePut(string s1, string s2);
-	void handleGet(string s1, string s2);
-	void handleDelete(string s1);
+	
 	void setTcpTargets();
 	void threadConsistency();
 	void mergeFileSystem(string m);

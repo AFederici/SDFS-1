@@ -16,7 +16,7 @@ Node::Node(ModeType mode)
 	prepareToSwitch = false;
 	logWriter = new Logger(LOGGING_FILE_NAME);
 	masterInformation = Member();
-	tcpServent->repairReq = Member();
+	tcpServent->repairReq = Messages(); // changed type
 }
 
 void Node::computeAndPrintBandwidth(double diff)
@@ -97,6 +97,7 @@ string Node::populateMembershipMessage()
 			string startTime = ctime(&startTimestamp);
 			startTime = startTime.substr(0, startTime.find("\n"));
 			mem_list_to_send += nodeInformation.ip + "," + nodeInformation.udpPort + "," + startTime + ",";
+			tuple<string, string, string> mapKey(nodeInformation.ip, nodeInformation.udpPort, startTime); // member_id
 			mem_list_to_send += to_string(heartbeatCounter) + "," + to_string(0) + to_string(get<0>(this->file_system[mapKey])) + "\n";
 			break;
 	}
@@ -152,16 +153,16 @@ void Node::masterDetection(){
 	}
 	else { votes.clear(); }
 	if (port.size() > 0) {
-		if (strcmp(potential.c_str(), nodeInformation.id.c_str())){
+		if (strcmp(potential.c_str(), nodeInformation.ip.c_str())){ // fixed typo
 			Messages msg(VOTE, nodeInformation.toString());
 			udpServent->sendMessage(potential, port, msg.toString());
 		}
 		else{
-			votes.add(nodeInformation.identity());
+			votes.insert(nodeInformation.identity()); //add ==> insert
 			int alive_nodes = membershipList.size();
-			if (alive_nodes.size() >= 4 && votes.size() > ((alive_nodes / 2) + 1)){
+			if (alive_nodes >= 4 && votes.size() > ((alive_nodes / 2) + 1)){
 				masterInformation = nodeInformation;
-				Messages msg(VOTEACK, nodeInformation.identity());
+				Messages msg(VOTEACK, nodeInformation.toString()); //identity ==> toString
 				for (auto &el : votes){
 					if (get<0>(el).compare(nodeInformation.ip)){
 						udpServent->sendMessage(get<0>(el), get<1>(el), msg.toString());
@@ -192,14 +193,14 @@ void Node::orderReplication(){
 void Node::orderReplication(){
 	for (auto &el : replicas_list){
 		if (get<0>(el.second) == 0) continue; //bad file status
-		if ((get<1>el.second).size() < 4) {
+		if (get<1>(el.second).size() < 4) {
 			auto it = (get<1>(el.second)).cbegin();
-			int random = rand() % v.size();
+			int random = rand() % v.size(); // what is v?
 			while (random--) {
 				++it;
 			}
 			Messages msg(REPLICATE, el.first);
-			udpServent->sendMessage(get<0>(*it), get<1>(*it), msg);
+			udpServent->sendMessage(get<0>(*it), get<1>(*it), msg.toString()); // added toString
 		}
 	}
 }
@@ -252,7 +253,7 @@ int Node::failureDetection(){
 			this->logWriter->printTheLog(REMOVE, message);
 		}
 		for (auto &el : this->replicas_list){
-			el.second.erase(removedVec[i]);
+			get<1>(el.second).erase(removedVec[i]); // added get<1>
 		}
 		this->file_system.erase(removedVec[i]);
 		if (get<0>(removedVec[i]).compare(masterInformation.ip) == 0) masterInformation.ip = "";
@@ -401,6 +402,7 @@ void Node::processHeartbeat(string message) {
 					if(incomingHeartbeatCounter > currentHeartbeatCounter){
 						get<0>(this->membershipList[mapKey]) = incomingHeartbeatCounter;
 						get<1>(this->membershipList[mapKey]) = localTimestamp;
+						// Need to split the string and make it into a tuple
 						get<0>(this->file_system[mapKey]) = membershipListEntry[5]; //update nodes byte info in terms of files
 
 
@@ -486,7 +488,8 @@ void Node::readMessage(string message){
 		}
 
 		default:
-			readSdfsMessage(message);
+			readSdfsMessage(message); // where is this function defined?
+		
 	}
 	//debugMembershipList();
 }
@@ -529,9 +532,9 @@ int main(int argc, char *argv[])
 		} else if(cmd == "leave"){
 			if(joined){
 				node->activeRunning = false;
-				node->tcpServent->end_session[MAX_CLIENTS] = 1;
-				node->tcpServer->dir->clear();
-				node->tcpServer->cloesFd(node->tcpServer->serverSocket);
+				node->tcpServent->endSession[MAX_CLIENTS] = 1; // fixed typo
+				node->tcpServent->dir->clear();
+				closeFd(node->tcpServent->serverSocket); //  removed caller and fixed typo
 				pthread_join(threads[2], (void **)&ret);
 				pthread_join(threads[1], (void **)&ret);
 				string message = "["+to_string(node->localTimestamp)+"] node "+node->nodeInformation.ip+"/"+node->nodeInformation.udpPort+" is left";
@@ -554,7 +557,7 @@ int main(int argc, char *argv[])
 		} else if(cmd == "mode") {
 			cout << "In " << node->runningMode << " mode" << endl;
 		} else if(cmd == "store"){
-			tcpServent->dir->store();
+			node->tcpServent->dir->store(); // added node->
 			break;
 		} else {
 			vector<string> ss = splitString(cmd, " ");
@@ -566,9 +569,9 @@ int main(int argc, char *argv[])
 				node->handleDelete(ss[1]);
 			} else if (ss[0] == "ls"){
 				cout << "---- ls ----";
-				if (replicas_list.count(ss[1])){
-					for (auto &el : replicas_list[ss[1]]){
-						if (get<0>(el.second) cout << Member(get<0>(el), get<1>(el), get<2>(el)).toString() << endl;
+				if (node->replicas_list.count(ss[1])){
+					for (auto &el : node->replicas_list[ss[1]]){ // added node-> Not sure what's going on here...
+						if (get<0>(el.second)){ cout << Member(get<0>(el), get<1>(el), get<2>(el)).toString() << endl;}
 					}
 				}
 			} else{
