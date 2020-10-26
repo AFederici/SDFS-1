@@ -26,7 +26,7 @@ string Node::populateFileLocationMessage(){
 
 void Node::updateDirIntoFileSystem(){
 	tuple<int, map<string, tuple<int, int>>> items = file_system[nodeInformation.identity()];
-	get<1>(items) = tcpSocket->dir.file_heartbeats;
+	get<1>(items) = tcpServent->dir->file_heartbeats;
 	for (auto &el : get<1>(items)){
 		get<0>(replicas_list[el.first]) = get<1>(el.second);
 		get<1>(replicas_list[el.first]).insert(nodeInformation.identity());
@@ -38,7 +38,7 @@ void Node::readSdfsMessage(string m){
     Messages msg(m);
 	switch (msg.type) {
         case VOTE: {
-			vector<string> address = string_split(msg.payload, "::");
+			vector<string> address = splitString(msg.payload, "::");
 			//if you're master and someone votes, inform them you are master
 			if (masterInformation.ip.compare(nodeInformation.ip) == 0){
 				Messages msg(VOTEACK, nodeInformation.toString());
@@ -54,9 +54,9 @@ void Node::readSdfsMessage(string m){
 			//either file is removed or theres now 4 copies
 			tuple<int, set<tuple<string, string, string>>> val = replicas_list[msg.payload];
 			if (get<0>(val) == 0 || (get<1>(val)).size() >= 4) return;
-			if (tcpServent->repairReq.ip.size()) return; //repair thread busy
+			if (tcpServent->repairReq.payload.size()) return; //repair thread busy
 			string s = msg.payload + "," + msg.payload;
-			tcpServent.repairReq = Messages(FILEDATA, s);
+			tcpServent->repairReq = Messages(FILEDATA, s);
             pthread_create(threads + 7, NULL, runRepairThread, (void *)this);
 			break;
         }
@@ -66,16 +66,16 @@ void Node::readSdfsMessage(string m){
         }
         case VOTEACK: {
             if (masterInformation.ip.size() && (masterInformation.ip) == (nodeInformation.ip)) return;
-            vector<string> address = string_split(msg.payload, "::");
-            masterInformation = Member(address[0], address[1], address[2]);
+            vector<string> address = splitString(msg.payload, "::");
+            masterInformation = Member(address[0], address[1]);
 			break;
         }
 		/*
 		case REPLICACK: {
             if (masterInformation && (masterInformation.ip) != (nodeInformation.ip)) return;
-            vector<string> ss = string_split(msg.payload, ",");
+            vector<string> ss = splitString(msg.payload, ",");
             Messages resp(REPLICATE, ss[1]);
-            vector<string> address = string_split(ss[0], "::");
+            vector<string> address = splitString(ss[0], "::");
             udpServent->sendMessage(address[0], address[1], resp.toString());
         }
         case INITREPLICATE: {
@@ -92,13 +92,14 @@ void Node::readSdfsMessage(string m){
             udpServent->sendMessage(fields[0], fields[1], resp.toString());
         }
 		*/
-		case default : { break; }
+		default : { break; }
+	}
 }
 
 
 
 vector<tuple<string, string>> Node::getTcpTargets(){
-	vector<string, string, string, int> v;
+	vector<tupple<string, string, string, int>> v;
 	for(auto& element: file_system){
 		tuple<string, string, string> keyPair = element.first;
 		if (get<0>(keyPair).compare(nodeInformation.ip)) continue;
@@ -158,7 +159,7 @@ void Node::mergeFileSystem(string m){
 		entry.clear();
 		entry = splitString(list_entry, ",");
 		if (entry.size() < 4) continue;
-		vector<string> address = string_split(entry[0]);
+		vector<string> address = splitString(entry[0]);
 		string file = entry[1];
 		int status = stoi(entry[2]);
 		int hb = stoi(entry[3]);

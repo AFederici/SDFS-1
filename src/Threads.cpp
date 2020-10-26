@@ -1,6 +1,4 @@
 #include "../inc/Node.h"
-#include "../inc/TcpSocket.h"
-#include "../inc/Utils.h"
 
 void *runUdpServer(void *udpSocket)
 {
@@ -25,7 +23,7 @@ void *runRepairThread(void* node){
 	int fd = n->tcpServent->outgoingConnection(get<0>(targets[0]), get<1>(targets[0]));
 	n->tcpServent->sendPutRequest(fd, n->tcpServent->repairReq.payload, n->tcpServent->repairReq.payload, 1); // needs one more arg
 	close(fd);
-	n->tcpServent->repairReq = Messages();
+	n->tcpServent->repairReq = Messages(FILEDATA, "");
 }
 
 //return 0 = fail
@@ -49,11 +47,11 @@ void *runTcpClient(void* tcpSocket)
 				tcp->outgoingReq.payload << " | " << msg.payload << endl;
 			free(buffer);close(fd);return 0;
 		}
-	} else if (tcp->outgoingReq.type == DATA){
-		vector<string> ss = string_split(tcp->outgoingReq.payload, ","); // splitString in util.h? delimiter needed
+	} else if (tcp->outgoingReq.type == FILEDATA){
+		vector<string> ss = splitString(tcp->outgoingReq.payload, ","); // splitString in util.h? delimiter needed
 		if (tcp->sendPutRequest(fd, ss[0], ss[1], 0)) { free(buffer);close(fd);return 0; }
 	} else if (tcp->outgoingReq.type == FILEGET){
-		vector<string> ss = string_split(tcp->outgoingReq.payload, ",");
+		vector<string> ss = splitString(tcp->outgoingReq.payload, ",");
 		if (tcp->sendGetRequest(fd, ss[0], ss[1]), 0) { free(buffer);close(fd);return 0; }
 	}
 	free(buffer);

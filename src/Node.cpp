@@ -16,7 +16,7 @@ Node::Node(ModeType mode)
 	prepareToSwitch = false;
 	logWriter = new Logger(LOGGING_FILE_NAME);
 	masterInformation = Member();
-	tcpServent->repairReq = Messages(); // changed type
+	tcpServent->repairReq = Messages(FILEDATA, "");
 }
 
 void Node::computeAndPrintBandwidth(double diff)
@@ -403,7 +403,7 @@ void Node::processHeartbeat(string message) {
 						get<0>(this->membershipList[mapKey]) = incomingHeartbeatCounter;
 						get<1>(this->membershipList[mapKey]) = localTimestamp;
 						// Need to split the string and make it into a tuple
-						if (this->file_system.count(mapKey)) get<0>(this->file_system[mapKey]) = membershipListEntry[5]; //update nodes byte info in terms of files
+						if (this->file_system.count(mapKey)) get<0>(this->file_system[mapKey]) = stoi(membershipListEntry[5]); //update nodes byte info in terms of files
 
 
 						string message = "["+to_string(this->localTimestamp)+"] node "+get<0>(mapKey)+"/"+get<1>(mapKey)+"/"+get<2>(mapKey)+" from "+to_string(currentHeartbeatCounter)+" to "+to_string(incomingHeartbeatCounter);

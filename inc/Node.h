@@ -10,13 +10,13 @@
 #include <time.h>
 #include <signal.h>
 
+#include "Utils.h"
 #include "Messages.h"
 #include "Modes.h"
 #include "Member.h"
 #include "UdpSocket.h"
 #include "TcpSocket.h"
 #include "Logger.h"
-#include "Utils.h"
 
 using namespace std;
 
@@ -89,6 +89,7 @@ public:
 	void handleGet(string s1, string s2);
 	void readSdfsMessage(string m);
 	void handleDelete(string s1);
+	vector<tuple<string, string>> getTcpTargets();
 
 private:
 	string populateMembershipMessage();
@@ -98,8 +99,6 @@ private:
 	void processHeartbeat(string message);
 	vector<tuple<string,string, string>> getRandomNodesToGossipTo();
 
-
-	vector<tuple<string, string>> getTcpTargets();
 	void threadConsistency();
 	void mergeFileSystem(string m);
 };
