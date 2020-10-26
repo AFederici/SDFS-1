@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+using namespace std;
 using std::string;
 using std::vector;
 using std::tuple_element;

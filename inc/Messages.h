@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 #include "MessageTypes.h"
-
+using namespace std;
 using std::string;
 using std::to_string;
 

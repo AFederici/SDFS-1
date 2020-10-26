@@ -25,6 +25,7 @@
 #include "MessageTypes.h"
 #include "Messages.h"
 
+using namespace std;
 using std::string;
 using std::to_string;
 using std::map;

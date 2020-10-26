@@ -39,7 +39,7 @@ void UdpSocket::bindServer()
 			continue;
 	    }
 
-		if (bind(sockfd, p->ai_addr, p->ai_addrlen) < 0) {
+		if (::bind(sockfd, p->ai_addr, p->ai_addrlen) < 0) {
 			close(sockfd);
 			perror("bindServer: bind");
 			continue;

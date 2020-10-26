@@ -14,7 +14,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <queue>
-
+using namespace std;
 using std::string;
 using std::queue;
 

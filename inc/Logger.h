@@ -9,7 +9,7 @@
 #include "MessageTypes.h"
 
 #define LOGFILE "logs.txt"
-
+using namespace std;
 using std::string;
 
 class Logger{

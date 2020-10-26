@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "Modes.h"
 
+using namespace std;
 using std::string;
 using std::map;
 using std::vector;
