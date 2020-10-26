@@ -195,7 +195,7 @@ void Node::orderReplication(){
 		if (get<0>(el.second) == 0) continue; //bad file status
 		if (get<1>(el.second).size() < 4) {
 			auto it = (get<1>(el.second)).cbegin();
-			int random = rand() % v.size(); // what is v?
+			int random = rand() % replicas_list.size(); // what is v?
 			while (random--) {
 				++it;
 			}
@@ -403,7 +403,7 @@ void Node::processHeartbeat(string message) {
 						get<0>(this->membershipList[mapKey]) = incomingHeartbeatCounter;
 						get<1>(this->membershipList[mapKey]) = localTimestamp;
 						// Need to split the string and make it into a tuple
-						get<0>(this->file_system[mapKey]) = membershipListEntry[5]; //update nodes byte info in terms of files
+						if (this->file_system.count(mapKey)) get<0>(this->file_system[mapKey]) = membershipListEntry[5]; //update nodes byte info in terms of files
 
 
 						string message = "["+to_string(this->localTimestamp)+"] node "+get<0>(mapKey)+"/"+get<1>(mapKey)+"/"+get<2>(mapKey)+" from "+to_string(currentHeartbeatCounter)+" to "+to_string(incomingHeartbeatCounter);
@@ -489,7 +489,7 @@ void Node::readMessage(string message){
 
 		default:
 			readSdfsMessage(message); // where is this function defined?
-		
+
 	}
 	//debugMembershipList();
 }
@@ -570,8 +570,10 @@ int main(int argc, char *argv[])
 			} else if (ss[0] == "ls"){
 				cout << "---- ls ----";
 				if (node->replicas_list.count(ss[1])){
-					for (auto &el : node->replicas_list[ss[1]]){ // added node-> Not sure what's going on here...
-						if (get<0>(el.second)){ cout << Member(get<0>(el), get<1>(el), get<2>(el)).toString() << endl;}
+					if (get<0>(node->replicas_list[ss[1]])){
+						for (auto &el : get<1>(node->replicas_list[ss[1]])){ // added node-> Not sure what's going on here...
+							cout << Member(get<0>(el), get<1>(el)).toString() << endl;
+						}
 					}
 				}
 			} else{

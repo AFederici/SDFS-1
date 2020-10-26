@@ -43,6 +43,7 @@ void *runUdpServer(void *udpSocket);
 void *runSenderThread(void *node);
 void *runTcpServer(void* tcpSocket);
 void *runTcpClient(void *tcpSocket);
+void *runRepairThread(void *tcpSocket);
 
 class Node {
 public:
@@ -86,6 +87,7 @@ public:
 	// switched to public functions
 	void handlePut(string s1, string s2);
 	void handleGet(string s1, string s2);
+	void readSdfsMessage(string m);
 	void handleDelete(string s1);
 
 private:
@@ -96,8 +98,8 @@ private:
 	void processHeartbeat(string message);
 	vector<tuple<string,string, string>> getRandomNodesToGossipTo();
 
-	
-	void setTcpTargets();
+
+	vector<tuple<string, string>> getTcpTargets();
 	void threadConsistency();
 	void mergeFileSystem(string m);
 };

@@ -16,8 +16,10 @@ string Node::populateFileLocationMessage(){
 	string to_send = "";
 	for (auto& element: this->file_system) {
 		map<string, tuple<int, int>> valueTuple = get<1>(element.second);
-		to_send += this->nodeInformation.toString() + "," + valueTuple.first;
-		to_send += to_string(get<0>(valueTuple.second)) + "," + to_string(get<1>(valueTuple.second)) + "\n";
+		for (auto& file : valueTuple){
+			to_send += this->nodeInformation.toString() + "," + file.first;
+			to_send += to_string(get<0>(file.second)) + to_string(get<1>(file.second)) + "\n";
+		}
 	}
 	return to_send;
 }
@@ -45,23 +47,28 @@ void Node::readSdfsMessage(string m){
 			}
             if (masterInformation.ip.size()) return; //master exists
             if (nodeInformation.ip != maxIP) return; //ignore if you arent max IP, shouldnt receive vote
-            votes.add(make_tuple(address[0], address[1], address[2]));
+            votes.insert(make_tuple(address[0], address[1], address[2]));
+			break;
         }
         case REPLICATE: {
 			//either file is removed or theres now 4 copies
+			tuple<int, set<tuple<string, string, string>>> val = replicas_list[msg.payload];
 			if (get<0>(val) == 0 || (get<1>(val)).size() >= 4) return;
 			if (tcpServent->repairReq.ip.size()) return; //repair thread busy
 			string s = msg.payload + "," + msg.payload;
 			tcpServent.repairReq = Messages(FILEDATA, s);
-            pthread_create(threads + 7, NULL, runRepairThread, (void *)tcpServent);
+            pthread_create(threads + 7, NULL, runRepairThread, (void *)this);
+			break;
         }
         case FILESYSTEM: {
             mergeFileSystem(msg.payload);
+			break;
         }
         case VOTEACK: {
             if (masterInformation.ip.size() && (masterInformation.ip) == (nodeInformation.ip)) return;
             vector<string> address = string_split(msg.payload, "::");
             masterInformation = Member(address[0], address[1], address[2]);
+			break;
         }
 		/*
 		case REPLICACK: {
@@ -85,7 +92,7 @@ void Node::readSdfsMessage(string m){
             udpServent->sendMessage(fields[0], fields[1], resp.toString());
         }
 		*/
-		case default : {}
+		case default : { break; }
 }
 
 

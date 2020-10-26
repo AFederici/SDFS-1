@@ -4,7 +4,6 @@
 #include <iostream>
 #include <string>
 #include "MessageTypes.h"
-#include "Node.h"
 
 using std::string;
 using std::to_string;
