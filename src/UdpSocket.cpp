@@ -1,6 +1,6 @@
 #include "../inc/UdpSocket.h"
 
-UdpSocket::UdpSocket(string port){
+UdpSocket::UdpSocket(char* port){
 	byteSent = 0;
 	byteReceived = 0;
 	serverPort = port;
@@ -15,13 +15,12 @@ void UdpSocket::bindServer()
 	struct sockaddr_storage their_addr;
 	char buf[MAXBUFLEN];
 	socklen_t addr_len;
-
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC; // set to AF_INET to force IPv4
 	hints.ai_socktype = SOCK_DGRAM; //UDP
 	hints.ai_flags = AI_PASSIVE; // use my IP
 
-	if ((fail = getaddrinfo(NULL, serverPort.c_str(), &hints, &servinfo)) != 0) {
+	if ((fail = getaddrinfo(NULL, serverPort, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(fail));
 		return;
 	}
@@ -70,17 +69,17 @@ void UdpSocket::sendMessage(string ip, string port, string message)
 {
 	int sockfd;
 	struct addrinfo hints, *servinfo, *p;
-	int fail;
-	int numbytes = 0;
+	int rv;
+	int numbytes;
 	int lucky_number;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 
-	if ((fail = getaddrinfo(ip.c_str(), port.c_str(), &hints, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(fail));
-		exit(1);
+	if ((rv = getaddrinfo(ip.c_str(), port.c_str(), &hints, &servinfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return;
 	}
 
 	// loop through all the results and make a socket
@@ -95,7 +94,7 @@ void UdpSocket::sendMessage(string ip, string port, string message)
 
 	if (p == NULL) {
 		fprintf(stderr, "sendMessage: failed to bind socket\n");
-		exit(1);
+		return;
 	}
 
 	// Simulate package loss
@@ -111,6 +110,9 @@ void UdpSocket::sendMessage(string ip, string port, string message)
 		perror("sendMessage: sendto");
 		exit(1);
 	}
+
 	freeaddrinfo(servinfo);
+
+	//cout << "sendMessage: sent " << numbytes << " bytes to " << ip << endl;
 	close(sockfd);
 }

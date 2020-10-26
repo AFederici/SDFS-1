@@ -43,7 +43,7 @@ void *processTcpRequests(void *tcpSocket);
 
 class TcpSocket {
 public:
-	string serverPort;
+	char* serverPort;
     int serverSocket;
 
 	vector<tuple<string, string>> request_targets;
@@ -56,7 +56,7 @@ public:
 	volatile int clients[MAX_CLIENTS];
 	volatile int endSession[MAX_CLIENTS+1];
 
-	TcpSocket(string port, Directory * direct);
+	TcpSocket(char* port, Directory * direct);
 	int outgoingConnection(tuple<string, string>);
 	int outgoingConnection(string host, string port);
 	int receivePutRequest(int fd, string target);

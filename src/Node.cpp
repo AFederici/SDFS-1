@@ -3,15 +3,37 @@
 
 Node::Node() : Node(ALL2ALL) {}
 
+//TEST MODE
+Node::Node(char * p1, char * p2, ModeType mode){
+	Directory * d = new Directory();
+	udpServent = new UdpSocket(p1);
+	tcpServent = new TcpSocket(p2, d);
+	udpPort = p1;
+	tcpPort = p2;
+	localTimestamp = 0;
+	heartbeatCounter = 0;
+	time(&startTimestamp);
+	runningMode = mode;
+	activeRunning = false;
+	introducerIP = "127.0.0.1";
+	prepareToSwitch = false;
+	logWriter = new Logger(LOGGING_FILE_NAME);
+	masterInformation = Member();
+	tcpServent->repairReq = Messages(FILEDATA, "");
+}
+
 Node::Node(ModeType mode)
 {
 	Directory * d = new Directory();
 	tcpServent = new TcpSocket(TCP_PORT, d);
 	udpServent = new UdpSocket(UDP_PORT);
+	udpPort = UDP_PORT;
+	tcpPort = TCP_PORT;
 	localTimestamp = 0;
 	heartbeatCounter = 0;
 	time(&startTimestamp);
 	runningMode = mode;
+	introducerIP = getIP(INTRODUCER);
 	activeRunning = false;
 	prepareToSwitch = false;
 	logWriter = new Logger(LOGGING_FILE_NAME);
@@ -481,6 +503,7 @@ void Node::readMessage(string message){
 			introducerMembershipList = populateIntroducerMembershipMessage();
 			Messages response(JOINRESPONSE, introducerMembershipList);
 			vector<string> fields = splitString(msg.payload, ",");
+			cout << fields[0]<< "::" << fields[1] << " " << response.toString() << endl;
 			if(fields.size() >= 2){
 				udpServent->sendMessage(fields[0], fields[1], response.toString());
 			}
@@ -494,12 +517,16 @@ void Node::readMessage(string message){
 	//debugMembershipList();
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
 	ModeType mode = ALL2ALL;
 	int rc;
-	Node *node = new Node(mode);
-	Member own(getIP(), UDP_PORT, TCP_PORT, node->localTimestamp, node->heartbeatCounter);
+	Node * node;
+	if (argc == 3){
+		cout << "---------------- LOCAL MODE -----------------" << endl;
+		node = new Node(argv[1],argv[2], mode);
+	} else {node = new Node(mode);}
+	Member own(getIP(), node->udpPort, node->tcpPort, node->localTimestamp, node->heartbeatCounter);
 	node->nodeInformation = own;
 	cout << "Starting Node at " << node->nodeInformation.ip << "/";
 	cout << node->nodeInformation.udpPort << "..." << endl;
@@ -513,17 +540,18 @@ int main(int argc, char *argv[])
 	int *ret;
 	string cmd;
 	bool joined = false;
-
-	if ((rc = pthread_create(&node->thread_arr[0], NULL, runUdpServer, (void *)node->udpServent)) != 0) {
+	if ((rc = pthread_create(&(node->thread_arr[0]), NULL, runUdpServer, (void *)node->udpServent)) != 0) {
 		cout << "Error:unable to create thread," << rc << endl; exit(-1);
 	}
 
-	if ((rc = pthread_create(&node->thread_arr[1], NULL, runTcpServer, (void *)node->tcpServent)) != 0) {
+	if ((rc = pthread_create(&(node->thread_arr[1]), NULL, runTcpServer, (void *)node->tcpServent)) != 0) {
 		cout << "Error:unable to create thread," << rc << endl; exit(-1);
 	}
 	while(1){
 		cin >> cmd;
 		if(cmd == "join"){
+			if (node->activeRunning) continue;
+			node->activeRunning = true;
 			if ((rc = pthread_create(&node->thread_arr[2], NULL, runSenderThread, (void *)node)) != 0) {
 				cout << "Error:unable to create thread," << rc << endl;
 				exit(-1);
@@ -568,7 +596,7 @@ int main(int argc, char *argv[])
 			} else if (ss[0] == "delete"){
 				node->handleDelete(ss[1]);
 			} else if (ss[0] == "ls"){
-				cout << "---- ls ----";
+				cout << "---- ls ----" << endl;
 				if (node->replicas_list.count(ss[1])){
 					if (get<0>(node->replicas_list[ss[1]])){
 						for (auto &el : get<1>(node->replicas_list[ss[1]])){ // added node-> Not sure what's going on here...

@@ -109,27 +109,21 @@ void *runSenderThread(void *node)
 {
 	Node *nodeOwn;
 	nodeOwn = (Node *) node;
-	nodeOwn->activeRunning = true;
 
 	// step: joining to the group -> just heartbeating to introducer
-	Member introducer(getIP(INTRODUCER), UDP_PORT);
+	Member introducer(nodeOwn->introducerIP, UDP_PORT);
 	nodeOwn->joinSystem(introducer);
-
 	while (nodeOwn->activeRunning) {
-
 		// 1. deepcopy and handle queue, and
 		// 2. merge membership list
 		nodeOwn->listen();
-
 		// Volunteerily leave
 		if(nodeOwn->activeRunning == false){
 			pthread_exit(NULL);
 		}
-
 		//add failure detection in between listening and sending out heartbeats
 		nodeOwn->failureDetection();
 		nodeOwn->masterDetection();
-
 		// keep heartbeating
 		nodeOwn->localTimestamp++;
 		nodeOwn->heartbeatCounter++;
@@ -141,7 +135,6 @@ void *runSenderThread(void *node)
 		// 4. do gossiping
 		nodeOwn->heartbeatToNode();
 		nodeOwn->directoryToNode();
-
 		time_t endTimestamp;
 		time(&endTimestamp);
 		double diff = difftime(endTimestamp, nodeOwn->startTimestamp);

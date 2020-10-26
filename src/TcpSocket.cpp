@@ -1,6 +1,6 @@
 #include "../inc/TcpSocket.h"
 
-TcpSocket::TcpSocket(string port, Directory * direct){
+TcpSocket::TcpSocket(char* port, Directory * direct){
 	for (int i = 0; i < MAX_CLIENTS; i++){ clients[i] = -1; endSession[i] = 0;}
 	endSession[MAX_CLIENTS] = 0;
 	byteSent = 0;
@@ -262,7 +262,7 @@ void TcpSocket::setupServer() {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 	int fail = 0;
-	fail = getaddrinfo(NULL, serverPort.c_str(), &hints, &res);
+	fail = getaddrinfo(NULL, serverPort, &hints, &res);
 	if (fail) {
 		gai_strerror(fail);
 		exit(1);

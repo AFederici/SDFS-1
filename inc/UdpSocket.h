@@ -23,14 +23,14 @@ using std::queue;
 
 class UdpSocket {
 public:
-	string serverPort;
+	char* serverPort;
 	unsigned long byteSent;
 	unsigned long byteReceived;
 	queue<string> qMessages;
 
 	void bindServer();
 	void sendMessage(string ip, string port, string message);
-	UdpSocket(string port);
+	UdpSocket(char* port);
 
 };
 #endif //UDPSOCKET_H

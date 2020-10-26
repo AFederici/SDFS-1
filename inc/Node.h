@@ -53,7 +53,9 @@ public:
 	Member nodeInformation;
 	UdpSocket *udpServent;
 	TcpSocket *tcpServent;
-
+	string introducerIP;
+	char * tcpPort;
+	char * udpPort;
 	int localTimestamp;
 	int heartbeatCounter;
 	time_t startTimestamp;
@@ -71,6 +73,7 @@ public:
 	map<string, tuple<int, set<tuple<string, string, string>>>> replicas_list;
 
 	Node();
+	Node(char* p1, char* p2, ModeType mode);
 	Node(ModeType mode);
 	int heartbeatToNode();
 	int directoryToNode(); //file version of above

@@ -1,7 +1,9 @@
 #include "../inc/Directory.h"
 
 Directory::Directory(){
-    dir = mkdtemp((char*)"XXXXXX");
+    char path[6];
+    strcat(path,"XXXXXX");
+    dir = mkdtemp(path);
 }
 
 void Directory::store(){
