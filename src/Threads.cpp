@@ -24,6 +24,22 @@ void *runRepairThread(void* node){
 	n->tcpServent->sendPutRequest(fd, n->tcpServent->repairReq.payload, n->tcpServent->repairReq.payload, 1); // needs one more arg
 	close(fd);
 	n->tcpServent->repairReq = Messages(FILEDATA, "");
+	return NULL;
+}
+
+void *processTcpRequests(void *tcpSocket) {
+	pthread_detach(pthread_self());
+	TcpSocket* tcp = (TcpSocket*) tcpSocket;
+	pthread_mutex_lock(&clients_mutex);
+	int id = tcp->thread_to_ind.find(pthread_self())->second;
+	pthread_mutex_unlock(&clients_mutex);
+	tcp->receiveMessage(tcp->clients[id]);
+    close(tcp->clients[id]);
+    pthread_mutex_lock(&clients_mutex);
+    tcp->clients[id] = -1;
+    tcp->clientsCount--;
+    pthread_mutex_unlock(&clients_mutex);
+	return NULL;
 }
 
 //return 0 = fail
@@ -35,9 +51,9 @@ void *runTcpClient(void* tcpSocket)
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	int fileBytes = 0;
 	if (tcp->outgoingReq.type == FILEDEL){
-		if (tcp->sendMessage(fd, FILEDEL, tcp->outgoingReq.payload.c_str())) free(buffer);close(fd);return 0;
+		if (tcp->sendMessage(fd, FILEDEL, tcp->outgoingReq.payload.c_str())) free(buffer);close(fd);return (void*)0;
 		if ((fileBytes = recv(fd, buffer, 1024, 0)) == -1){
-			perror("write_server_put: recv");free(buffer);close(fd);return 0;
+			perror("write_server_put: recv");free(buffer);close(fd);return (void*)0;
 		}
 		buffer[fileBytes] = '\0';
 		Messages msg = Messages(buffer);
@@ -45,17 +61,17 @@ void *runTcpClient(void* tcpSocket)
 			cout << "DELETION FAILED " << " | " << get<0>(tcp->request_targets[id]) <<
 				"::" << get<1>(tcp->request_targets[id]) << " | " <<
 				tcp->outgoingReq.payload << " | " << msg.payload << endl;
-			free(buffer);close(fd);return 0;
+			free(buffer);close(fd);return (void*)0;
 		}
 	} else if (tcp->outgoingReq.type == FILEDATA){
 		vector<string> ss = splitString(tcp->outgoingReq.payload, ","); // splitString in util.h? delimiter needed
-		if (tcp->sendPutRequest(fd, ss[0], ss[1], 0)) { free(buffer);close(fd);return 0; }
+		if (tcp->sendPutRequest(fd, ss[0], ss[1], 0)) { free(buffer);close(fd);return (void*)0;  }
 	} else if (tcp->outgoingReq.type == FILEGET){
 		vector<string> ss = splitString(tcp->outgoingReq.payload, ",");
-		if (tcp->sendGetRequest(fd, ss[0], ss[1]), 0) { free(buffer);close(fd);return 0; }
+		if (tcp->sendGetRequest(fd, ss[0], ss[1]), 0) { free(buffer);close(fd); return (void*)0; }
 	}
 	free(buffer);
-	close(fd);//return 1;  I commentd this out
+	close(fd);return (void*)1;
 }
 
 
@@ -78,6 +94,7 @@ void *testMessages(void* tcp)
 		t->sendMessage(fd, ACK, "yoooo AJ");
 		sleep(1);
 	}
+	return NULL;
 }
 
 /**

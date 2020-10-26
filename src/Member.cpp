@@ -50,6 +50,7 @@ string Member::tcpId(){
 
 tuple<string, string, string> Member::identity(){
 	tuple<string, string, string> key(ip, udpPort, to_string(timestamp)); // fixed typo
+	return key;
 };
 
 Member::Member(){

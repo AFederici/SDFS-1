@@ -514,17 +514,17 @@ int main(int argc, char *argv[])
 	string cmd;
 	bool joined = false;
 
-	if ((rc = pthread_create(&threads[0], NULL, runUdpServer, (void *)node->udpServent)) != 0) {
+	if ((rc = pthread_create(&node->thread_arr[0], NULL, runUdpServer, (void *)node->udpServent)) != 0) {
 		cout << "Error:unable to create thread," << rc << endl; exit(-1);
 	}
 
-	if ((rc = pthread_create(&threads[1], NULL, runTcpServer, (void *)node->tcpServent)) != 0) {
+	if ((rc = pthread_create(&node->thread_arr[1], NULL, runTcpServer, (void *)node->tcpServent)) != 0) {
 		cout << "Error:unable to create thread," << rc << endl; exit(-1);
 	}
 	while(1){
 		cin >> cmd;
 		if(cmd == "join"){
-			if ((rc = pthread_create(&threads[2], NULL, runSenderThread, (void *)node)) != 0) {
+			if ((rc = pthread_create(&node->thread_arr[2], NULL, runSenderThread, (void *)node)) != 0) {
 				cout << "Error:unable to create thread," << rc << endl;
 				exit(-1);
 			}
@@ -535,8 +535,8 @@ int main(int argc, char *argv[])
 				node->tcpServent->endSession[MAX_CLIENTS] = 1; // fixed typo
 				node->tcpServent->dir->clear();
 				closeFd(node->tcpServent->serverSocket); //  removed caller and fixed typo
-				pthread_join(threads[2], (void **)&ret);
-				pthread_join(threads[1], (void **)&ret);
+				pthread_join(node->thread_arr[2], (void **)&ret);
+				pthread_join(node->thread_arr[1], (void **)&ret);
 				string message = "["+to_string(node->localTimestamp)+"] node "+node->nodeInformation.ip+"/"+node->nodeInformation.udpPort+" is left";
 				cout << "[LEAVE]" << message.c_str() << endl;
 				node->logWriter->printTheLog(LEAVE, message);
@@ -593,9 +593,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	pthread_kill(threads[0], SIGUSR1);
-	pthread_kill(threads[1], SIGUSR1);
-	if(joined) pthread_kill(threads[2], SIGUSR1);
+	pthread_kill(node->thread_arr[0], SIGUSR1);
+	pthread_kill(node->thread_arr[1], SIGUSR1);
+	if(joined) pthread_kill(node->thread_arr[2], SIGUSR1);
 	pthread_exit(NULL);
 	return 1;
 }

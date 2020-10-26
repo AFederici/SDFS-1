@@ -6,7 +6,7 @@ Directory::Directory(){
 
 void Directory::store(){
     cout << "[STORE] " << endl;
-    for(auto& element: file_hearbeats){
+    for(auto& element: file_heartbeats){
         if (get<1>(element.second) == 0) continue;
         cout << "FILE - " << element.first.c_str() << endl;
     }

@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <stdlib.h>
 #include <pthread.h>
 #include <time.h>
 #include <signal.h>
@@ -37,7 +38,6 @@ using namespace std;
 #define T_switch 3 // in seconds
 
 static pthread_mutex_t repair_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_t threads[8];
 
 void *runUdpServer(void *udpSocket);
 void *runSenderThread(void *node);
@@ -47,6 +47,7 @@ void *runRepairThread(void *tcpSocket);
 
 class Node {
 public:
+	pthread_t thread_arr[8];
 	// (ip_addr, port_num, timestamp at insertion) -> (hb_count, timestamp, fail_flag)
 	map<tuple<string, string, string>, tuple<int, int, int>> membershipList;
 	Member nodeInformation;

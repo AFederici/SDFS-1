@@ -22,7 +22,7 @@ void closeFd(int fd){
     close(fd);
 }
 int TcpSocket::outgoingConnection(tuple<string,string> address){
-	return outgoingConnection(get<0>address, get<1>address);
+	return outgoingConnection(get<0>(address), get<1>(address));
 }
 
 int TcpSocket::outgoingConnection(string host, string port){
@@ -55,8 +55,8 @@ int TcpSocket::receivePutRequest(int fd, string target){
 	int result = 0;
 	int status = 0;
 	bool cond = true;
-	get<0>(dir->file_hearbeats[target])++;
-	get<1>((dir->file_hearbeats[target])) = 1;
+	get<0>(dir->file_heartbeats[target])++;
+	get<1>((dir->file_heartbeats[target])) = 1;
 	pthread_mutex_lock(&dir_mutex);
 	auto it = dir->file_status.find(target);
 	if (it != dir->file_status.end()) result = it->second;
@@ -77,7 +77,7 @@ int TcpSocket::receivePutRequest(int fd, string target){
 		dir->file_status[target] = WRITELOCK;
 		pthread_mutex_unlock(&dir_mutex);
 	}
-	status = receiveFile(fd, dir->real_path(target));
+	status = receiveFile(fd, dir->get_path(target));
 	pthread_mutex_lock(&dir_mutex);
 	dir->file_status[target] = OPEN;
 	pthread_mutex_unlock(&dir_mutex);
@@ -179,7 +179,7 @@ int TcpSocket::receiveMessage(int fd){
 		dir->file_status.erase(dir->file_status.find(msg.payload));
 		pthread_mutex_unlock(&dir_mutex);
 		dir->remove_file(msg.payload);
-		get<1>((dir->file_hearbeats[msg.payload])) = 0;
+		get<1>((dir->file_heartbeats[msg.payload])) = 0;
 		sendOK(fd);
 	}
 	else if (msg.type == FILEGET){
@@ -283,7 +283,7 @@ void TcpSocket::setupServer() {
 }
 
 void TcpSocket::runServer(){
-    pthread_t pids[MAX_CLIENTS];
+    pthread_t tids[MAX_CLIENTS];
     while (endSession[MAX_CLIENTS] == 0){
     	int accept_fd = accept(serverSocket, NULL, NULL);
     	if (accept_fd == -1){
@@ -304,8 +304,8 @@ void TcpSocket::runServer(){
     				j = i;
 					int result = 0;
 					pthread_mutex_lock(&id_mutex);
-    				result = pthread_create(pids + j, NULL, processTcpRequests, (void *)this);
-					if (!result) { thread_to_ind[pids[j]] = j; }
+    				result = pthread_create(tids + j, NULL, processTcpRequests, (void *)this);
+					if (!result) { thread_to_ind[tids[j]] = j; }
 					pthread_mutex_unlock(&id_mutex);
 					if (result) break;
     			}
@@ -313,20 +313,4 @@ void TcpSocket::runServer(){
     	}
     	pthread_mutex_unlock(&clients_mutex);
     }
-}
-
-//sendTCPRequests -> utilize message queue maybe and use semaphore or whatever
-
-void *processTcpRequests(void *tcpSocket) {
-	pthread_detach(pthread_self());
-	TcpSocket* tcp = (TcpSocket*) tcpSocket;
-	pthread_mutex_lock(&clients_mutex);
-	int id = tcp->thread_to_ind.find(pthread_self())->second;
-	pthread_mutex_unlock(&clients_mutex);
-	tcp->receiveMessage(tcp->clients[id]);
-    close(tcp->clients[id]);
-    pthread_mutex_lock(&clients_mutex);
-    tcp->clients[id] = -1;
-    tcp->clientsCount--;
-    pthread_mutex_unlock(&clients_mutex);
 }
