@@ -3,10 +3,12 @@
 
 #include <iostream>
 #include <string>
+
 #include "MessageTypes.h"
 
 using std::string;
 using std::to_string;
+using std::get;
 
 class Messages {
 public:

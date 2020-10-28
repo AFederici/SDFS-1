@@ -6,10 +6,12 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <bits/stdc++.h>
 #include <arpa/inet.h>
 
 using std::string;
 using std::vector;
+using std::get;
 using std::tuple_element;
 
     vector<string> splitString(string s, string delimiter);

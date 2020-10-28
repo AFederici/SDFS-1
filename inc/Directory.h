@@ -13,6 +13,7 @@
 #include "Modes.h"
 
 using std::string;
+using std::get;
 using std::map;
 using std::vector;
 using std::cout;
