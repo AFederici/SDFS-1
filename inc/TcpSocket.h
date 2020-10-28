@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <errno.h>
+#include <bits/stdc++.h>
 
 #include "Directory.h"
 #include "MessageTypes.h"

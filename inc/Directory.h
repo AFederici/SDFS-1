@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <sstream>
 #include <unistd.h>
+#include <bits/stdc++.h>
 #include "Modes.h"
 
 using std::string;

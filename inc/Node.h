@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <signal.h>
+#include <bits/stdc++.h>
 
 #include "Utils.h"
 #include "Messages.h"
