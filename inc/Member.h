@@ -3,9 +3,10 @@
 
 #include <iostream>
 #include <string>
-#include <bits/stdc++.h>
-
 #include "Utils.h"
+#ifdef _LINUX
+#include <bits/stdc++.h>
+#endif
 
 using std::string;
 using std::to_string;

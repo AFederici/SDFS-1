@@ -5,12 +5,14 @@
 #include <string>
 #include <fstream>
 #include <map>
+#include <sstream>
 #include <stdlib.h>
 #include <stdio.h>
-#include <sstream>
 #include <unistd.h>
-#include <bits/stdc++.h>
 #include "Modes.h"
+#ifdef _LINUX
+#include <bits/stdc++.h>
+#endif
 
 using std::string;
 using std::get;
@@ -20,6 +22,7 @@ using std::cout;
 using std::endl;
 using std::tuple;
 using std::ostringstream;
+
 static pthread_mutex_t directory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 class Directory{

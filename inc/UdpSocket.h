@@ -2,7 +2,7 @@
 #define UDPSOCKET_H
 #include <iostream>
 #include <string>
-
+#include <queue>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,8 +13,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <queue>
+#ifdef _LINUX
 #include <bits/stdc++.h>
+#endif
+
 
 using std::string;
 using std::queue;

@@ -10,8 +10,6 @@
 #include <pthread.h>
 #include <time.h>
 #include <signal.h>
-#include <bits/stdc++.h>
-
 #include "Utils.h"
 #include "Messages.h"
 #include "Modes.h"
@@ -19,6 +17,9 @@
 #include "UdpSocket.h"
 #include "TcpSocket.h"
 #include "Logger.h"
+#ifdef _LINUX
+#include <bits/stdc++.h>
+#endif
 
 using namespace std;
 

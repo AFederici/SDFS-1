@@ -1,10 +1,11 @@
 #ifndef TCPSOCKET_H
 #define TCPSOCKET_H
+
 #include <iostream>
 #include <string>
 #include <map>
+#include <queue>
 #include <string>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,16 +16,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <queue>
 #include <ctype.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <errno.h>
-#include <bits/stdc++.h>
-
 #include "Directory.h"
 #include "MessageTypes.h"
 #include "Messages.h"
+#ifdef _LINUX
+#include <bits/stdc++.h>
+#endif
 
 using std::string;
 using std::to_string;

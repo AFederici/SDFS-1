@@ -5,7 +5,6 @@
 #include <string>
 #include <fstream>
 #include <stdio.h>
-
 #include "MessageTypes.h"
 
 #define LOGFILE "logs.txt"
