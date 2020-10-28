@@ -2,12 +2,13 @@
 #define UTILS_H
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 #include <netdb.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#ifdef _LINUX
+#ifdef __linux__
 #include <bits/stdc++.h>
 #endif
 

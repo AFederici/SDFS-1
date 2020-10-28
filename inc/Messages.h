@@ -3,8 +3,9 @@
 
 #include <iostream>
 #include <string>
+#include <utility>
 #include "MessageTypes.h"
-#ifdef _LINUX
+#ifdef __linux__
 #include <bits/stdc++.h>
 #endif
 

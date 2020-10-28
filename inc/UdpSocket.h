@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <queue>
+#include <utility>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,10 +14,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#ifdef _LINUX
+#ifdef __linux__
 #include <bits/stdc++.h>
 #endif
-
 
 using std::string;
 using std::queue;

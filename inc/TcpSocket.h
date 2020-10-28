@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <utility>
 #include <queue>
 #include <string>
 #include <stdio.h>
@@ -23,7 +24,7 @@
 #include "Directory.h"
 #include "MessageTypes.h"
 #include "Messages.h"
-#ifdef _LINUX
+#ifdef __linux__ 
 #include <bits/stdc++.h>
 #endif
 

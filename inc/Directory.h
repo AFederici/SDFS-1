@@ -5,12 +5,13 @@
 #include <string>
 #include <fstream>
 #include <map>
+#include <utility>
 #include <sstream>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include "Modes.h"
-#ifdef _LINUX
+#ifdef __linux__
 #include <bits/stdc++.h>
 #endif
 

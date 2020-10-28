@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <utility>
 #include <stdlib.h>
 #include <pthread.h>
 #include <time.h>
@@ -17,7 +18,7 @@
 #include "UdpSocket.h"
 #include "TcpSocket.h"
 #include "Logger.h"
-#ifdef _LINUX
+#ifdef __linux__ 
 #include <bits/stdc++.h>
 #endif
 
