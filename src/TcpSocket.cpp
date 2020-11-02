@@ -82,7 +82,7 @@ int TcpSocket::receivePutRequest(int fd, string target){
 	dir->file_status[target] = OPEN;
 	pthread_mutex_unlock(&dir_mutex);
 	if (status == -2) { cout << "MISSING FILE " << target << endl; fflush(stdout);}
-	cout << " PUT COMPLETE " << msg.toString() << endl;
+	cout << " PUT RECEIVED " << msg.toString() << endl;
 	fflush(stdout);
 	return status;
 }
@@ -114,6 +114,7 @@ int TcpSocket::receiveGetRequest(int fd, string target){
 		if (!cond) dir->file_status[target] = READLOCK;
 		pthread_mutex_unlock(&dir_mutex);
 	}
+	cout << " GET RECEIVED " << target << endl;
 	return sendFile(fd, dir->get_path(target), NULL);
 }
 
@@ -123,6 +124,7 @@ int TcpSocket::sendGetRequest(int fd, string filename, string local_file){
         perror("sendGet: send");
         return -1;
     }
+	cout << " GET SENT " << target << endl;
 	return receiveFile(fd, local_file);
 }
 
@@ -143,6 +145,7 @@ int TcpSocket::sendPutRequest(int fd, string local, string target, int node_init
 		return -2;
 	}
 	free(buffer);
+	cout << " PUT SENT " << target << endl;
 	return 0;
 }
 
@@ -203,8 +206,9 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 		return -1;
 	}
 	while (!feof(fr)){
-		size_t partialR = fread(buffer, 1, MAXBUFLEN, fr);
+		size_t partialR = fread(buffer, 1, MAXBUFLEN-1, fr);
 		if (!partialR) break;
+		buffer[partialR] = '\0';
 		if (sendMessage(fd, FILEDATA, buffer)) {
 			perror("write_server_put: send");
 			free(buffer);
@@ -220,7 +224,6 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 		return -1;
 	}
 	if (shutdown(serverSocket, SHUT_WR)) {perror("shutdown"); exit(1);}
-	cout << " GET COMPLETE " << target << endl;
 	fflush(stdout);
 	return 0;
 }
