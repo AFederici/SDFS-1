@@ -144,22 +144,26 @@ void Node::threadConsistency(){
 			auto targ = getTcpTargets();
 			copy(targ.begin(), targ.end(), back_inserter(tcpServent->request_targets));
 		}
+		int numTargets = tcpServent->request_targets.size();
+		int attempts = 0;
 		int index = 0;
-		for (int i = 0; i < (REP - sent.size()); i++){
-			while (sent.count(tcpServent->request_targets[index])) index++;
-			pthread_mutex_lock(&id_mutex);
-			if (pthread_create(&thread_arr[3+i], NULL, runTcpClient, (void *)tcpServent)) {
-				cout << "Error:unable to create thread," << endl; pthread_mutex_unlock(&id_mutex); exit(-1);
+		while ((index < numTargets) && (attempts < (REP - sent.size()))){
+			while ((index < numTargets) && sent.count(tcpServent->request_targets[index])) index++;
+			if (index < numTargets){
+				pthread_mutex_lock(&id_mutex);
+				if (pthread_create(&thread_arr[3+i], NULL, runTcpClient, (void *)tcpServent)) {
+					cout << "Error:unable to create thread," << endl; pthread_mutex_unlock(&id_mutex); exit(-1);
+				}
+				tcpServent->thread_to_ind[thread_arr[3+i]] = attempts;
+				pthread_mutex_unlock(&id_mutex);
+				attempts++;
 			}
-			tcpServent->thread_to_ind[thread_arr[3+i]] = index;
-			pthread_mutex_unlock(&id_mutex);
 		}
-		index = 0;
-		while (index < (REP - sent.size())){
+		for (int i = 0; i < attempts; i++){
 			t = 0;
-			pthread_join(thread_arr[3+index], &t);
+			pthread_join(thread_arr[3+i], &t);
 			pthread_mutex_lock(&id_mutex);
-			if (t) sent.insert(tcpServent->request_targets[tcpServent->thread_to_ind[thread_arr[3+index]]]);
+			if (t) sent.insert(tcpServent->request_targets[tcpServent->thread_to_ind[thread_arr[3+i]]]);
 			pthread_mutex_unlock(&id_mutex);
 		}
 	}
