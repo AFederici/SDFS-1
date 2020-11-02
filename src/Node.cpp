@@ -139,13 +139,12 @@ int Node::heartbeatToNode()
 	// 3. pick nodes from membership list
 	string mem_list_to_send = populateMembershipMessage();
 	vector<tuple<string,string,string>> targetNodes = getRandomNodesToGossipTo();
-
 	// 4. do gossiping
 	for (uint i=0; i<targetNodes.size(); i++) {
-		string message = "["+to_string(this->localTimestamp)+"] node "+get<0>(targetNodes[i])+"/"+get<1>(targetNodes[i]))+"/"+get<2>(targetNodes[i]);
+		string message = "["+to_string(this->localTimestamp)+"] node "+get<0>(targetNodes[i])+"/"+get<1>(targetNodes[i])+"/"+get<2>(targetNodes[i]);
 		this->logWriter->printTheLog(GOSSIPTO, message);
 		Messages msg(HEARTBEAT, mem_list_to_send);
-		udpServent->sendMessage(destination.ip, destination.udpPort, msg.toString());
+		udpServent->sendMessage(get<0>(targetNodes[i]), get<1>(targetNodes[i]), msg.toString());
 	}
 	return 0;
 }
