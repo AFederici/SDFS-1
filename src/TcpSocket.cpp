@@ -124,7 +124,7 @@ int TcpSocket::sendGetRequest(int fd, string filename, string local_file){
         perror("sendGet: send");
         return -1;
     }
-	cout << " GET SENT " << target << endl;
+	cout << " GET SENT " << filename << endl;
 	return receiveFile(fd, local_file);
 }
 
