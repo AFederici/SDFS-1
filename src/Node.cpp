@@ -561,8 +561,14 @@ int main(int argc, char **argv)
 		} else {
 			vector<string> ss = splitString(cmd, " ");
 			if (ss[0] == "put"){ node->handlePut(ss[1], ss[2]); }
-			else if (ss[0] == "get"){ node->handleGet(ss[1], ss[2]); }
-			else if (ss[0] == "delete"){ node->handleDelete(ss[1]); }
+			else if (ss[0] == "get"){
+				if (get<1>(node->replicas_list[ss[1]]).size() == 0) cout << "FILE DOESNT EXIST";
+				node->handleGet(ss[1], ss[2]);
+			}
+			else if (ss[0] == "delete"){
+				if (get<1>(node->replicas_list[ss[1]]).size() == 0) cout << "FILE DOESNT EXIST";
+				node->handleDelete(ss[1]);
+			}
 			else if (ss[0] == "ls"){
 				cout << "---- ls ----" << endl;
 				if (node->replicas_list.count(ss[1])){

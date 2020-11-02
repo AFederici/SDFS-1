@@ -19,7 +19,7 @@ void *runTcpServer(void* tcpSocket)
 void *runRepairThread(void* node){
 	pthread_detach(pthread_self());
 	Node * n = (Node *) node;
-	auto targets = n->getTcpTargets(); // where is this function defined"
+	auto targets = n->getTcpTargets();
 	int fd = n->tcpServent->outgoingConnection(get<0>(targets[0]), get<1>(targets[0]));
 	n->tcpServent->sendPutRequest(fd, n->tcpServent->repairReq.payload, n->tcpServent->repairReq.payload, 1); // needs one more arg
 	close(fd);
