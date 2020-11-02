@@ -357,7 +357,7 @@ void Node::processHeartbeat(string message) {
 	for(string list_entry: incomingMembershipList){
 		membershipListEntry.clear();
 		membershipListEntry = splitString(list_entry, ",");
-		for (auto &debug_entry : membershipList) cout << debug_entry << " , ";
+		for (auto &debug_entry : membershipListEntry) cout << debug_entry << " , ";
 		cout << endl;
 		if (membershipListEntry.size() < 6) { cout << "ERRRORRRRR" << endl; fflush(stdout); continue; }
 		int incomingHeartbeatCounter = stoi(membershipListEntry[3]);
