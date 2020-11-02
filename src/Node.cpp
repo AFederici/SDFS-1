@@ -171,7 +171,7 @@ void Node::masterDetection(){
 		else{
 			votes.insert(nodeInformation.identity());
 			int alive_nodes = membershipList.size();
-			if (alive_nodes >= N_Rep && votes.size() > ((alive_nodes / 2) + 1)){
+			if (alive_nodes >= N_rep && votes.size() > ((alive_nodes / 2) + 1)){
 				masterInformation = nodeInformation;
 				Messages msg(VOTEACK, nodeInformation.toString());
 				for (auto &el : votes){
@@ -189,7 +189,7 @@ void Node::orderReplication(){
 	int ind = 0;
 	for (auto &el : replicas_list){
 		if (get<0>(el.second) == 0) continue;
-		if ((get<1>el.second).size() != N_Rep) {
+		if ((get<1>el.second).size() != N_rep) {
 			while ((get<1>el.second).count())
 			Messages msg(INITREPLICATE, el.first);
 			udpServent->sendMessage(get<0>(targets[ind]), get<1>(targets[ind]), msg);
@@ -204,7 +204,7 @@ void Node::orderReplication(){
 void Node::orderReplication(){
 	for (auto &el : replicas_list){
 		if (get<0>(el.second) == 0) continue; //bad file status
-		if (get<1>(el.second).size() < N_Rep) {
+		if (get<1>(el.second).size() < N_rep) {
 			auto it = (get<1>(el.second)).cbegin();
 			int random = rand() % replicas_list.size();
 			while (random--) {

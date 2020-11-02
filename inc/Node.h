@@ -36,7 +36,7 @@ using namespace std;
 #define T_timeout 3 // in T_period
 #define T_cleanup 3 // in T_period
 #define N_b 3 // how many nodes GOSSIP want to use
-#define N_Rep 4 // file replicase
+#define N_Rep 4 // file replicas
 // ------
 
 #define T_switch 3 // in seconds

@@ -78,7 +78,7 @@ void *runTcpClient(void* tcpSocket)
 void testMessages(UdpSocket* udp)
 {
 	sleep(2);
-	for (int j = 0; j < N_Rep; j++) {
+	for (int j = 0; j < N_rep; j++) {
 		udp->sendMessage("127.0.0.1", UDP_PORT, "test message "+to_string(j));
 	}
 	sleep(1);
@@ -89,7 +89,7 @@ void *testMessages(void* tcp)
 	TcpSocket * t = (TcpSocket *) tcp;
 	sleep(2);
 	cout << "p1" << endl;
-	for (int j = 0; j < N_Rep; j++) {
+	for (int j = 0; j < N_rep; j++) {
 		int fd = t->outgoingConnection("127.0.0.1", TCP_PORT);
 		t->sendMessage(fd, ACK, "yoooo AJ");
 		sleep(1);
