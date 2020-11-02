@@ -31,6 +31,7 @@ int TcpSocket::outgoingConnection(string host, string port){
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
+	cout << "CONNECTING TO " << host.c_str() << "::" << port.c_str() << endl;
 	int fail = getaddrinfo(host.c_str(), port.c_str(), &hints, &res);
 	if (fail) {
 		gai_strerror(fail);

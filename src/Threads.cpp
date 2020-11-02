@@ -30,9 +30,9 @@ void *runRepairThread(void* node){
 void *processTcpRequests(void *tcpSocket) {
 	pthread_detach(pthread_self());
 	TcpSocket* tcp = (TcpSocket*) tcpSocket;
-	pthread_mutex_lock(&clients_mutex);
+	pthread_mutex_lock(&id_mutex);
 	int id = tcp->thread_to_ind.find(pthread_self())->second;
-	pthread_mutex_unlock(&clients_mutex);
+	pthread_mutex_lock(&id_mutex);
 	tcp->receiveMessage(tcp->clients[id]);
     close(tcp->clients[id]);
     pthread_mutex_lock(&clients_mutex);
@@ -46,7 +46,9 @@ void *processTcpRequests(void *tcpSocket) {
 void *runTcpClient(void* tcpSocket)
 {
 	TcpSocket * tcp = (TcpSocket *) tcpSocket;
+	pthread_mutex_lock(&id_mutex);
 	int id = tcp->thread_to_ind[pthread_self()];
+	pthread_mutex_unlock(&id_mutex);
 	int fd = tcp->outgoingConnection(tcp->request_targets[id]);
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	int fileBytes = 0;

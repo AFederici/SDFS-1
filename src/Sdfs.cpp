@@ -139,6 +139,7 @@ void Node::threadConsistency(){
 	vector<tuple<string, string>> targs;
 	tcpServent->request_targets.clear();
 	void *t = (void*) calloc(1, sizeof(int*));
+	int i = 0;
 	while (sent.size() < REP){
 		targs = getTcpTargets();
 		copy(targs.begin(), targs.end(), back_inserter(tcpServent->request_targets));
@@ -152,9 +153,10 @@ void Node::threadConsistency(){
 			tcpServent->thread_to_ind[thread_arr[3+i]] = index;
 			pthread_mutex_unlock(&id_mutex);
 		}
-		for (int i = 0; i < (REP - sent.size()); i++){
+		index = 0;
+		while (index < (REP - sent.size())){
 			t = 0;
-			pthread_join(thread_arr[(REP-1)+i], &t);
+			pthread_join(thread_arr[(REP-1)+index], &t);
 			if (t) sent.insert(tcpServent->request_targets[tcpServent->thread_to_ind[thread_arr[(REP-1)+i]]]);
 		}
 	}

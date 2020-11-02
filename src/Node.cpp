@@ -142,8 +142,7 @@ int Node::heartbeatToNode()
 
 	// 4. do gossiping
 	for (uint i=0; i<targetNodes.size(); i++) {
-		Member destination(get<0>(targetNodes[i]), get<1>(targetNodes[i]));
-		string message = "["+to_string(this->localTimestamp)+"] node "+destination.ip+"/"+destination.udpPort+"/"+get<2>(targetNodes[i]);
+		string message = "["+to_string(this->localTimestamp)+"] node "+get<0>(targetNodes[i])+"/"+get<1>(targetNodes[i]))+"/"+get<2>(targetNodes[i]);
 		this->logWriter->printTheLog(GOSSIPTO, message);
 		Messages msg(HEARTBEAT, mem_list_to_send);
 		udpServent->sendMessage(destination.ip, destination.udpPort, msg.toString());
@@ -359,7 +358,7 @@ void Node::processHeartbeat(string message) {
 		membershipListEntry = splitString(list_entry, ",");
 		//for (auto &debug_entry : membershipListEntry) cout << debug_entry << " , ";
 		//cout << endl;
-		if (membershipListEntry.size() < 6) { cout << "less than 6 items in entry" << endl; fflush(stdout); continue; }
+		if (membershipListEntry.size() < 6) { continue; } //just a join if not
 		int incomingHeartbeatCounter = stoi(membershipListEntry[3]);
 		int failFlag = stoi(membershipListEntry[4]);
 		tuple<string,string,string> mapKey(membershipListEntry[0], membershipListEntry[1], membershipListEntry[2]);
@@ -561,16 +560,11 @@ int main(int argc, char **argv)
 		} else if(cmd == "store"){
 			node->tcpServent->dir->store();
 		} else {
-			cout << "CMD: " << cmd << endl; //seg faulty
 			vector<string> ss = splitString(cmd, " ");
-			if (ss[0] == "put"){
-				cout << "a1: " << ss[1] << " a2: " << ss[2] << endl;
-				node->handlePut(ss[1], ss[2]);
-			} else if (ss[0] == "get"){
-				node->handleGet(ss[1], ss[2]);
-			} else if (ss[0] == "delete"){
-				node->handleDelete(ss[1]);
-			} else if (ss[0] == "ls"){
+			if (ss[0] == "put"){ node->handlePut(ss[1], ss[2]); }
+			else if (ss[0] == "get"){ node->handleGet(ss[1], ss[2]); }
+			else if (ss[0] == "delete"){ node->handleDelete(ss[1]); }
+			else if (ss[0] == "ls"){
 				cout << "---- ls ----" << endl;
 				if (node->replicas_list.count(ss[1])){
 					if (get<0>(node->replicas_list[ss[1]])){
@@ -595,7 +589,6 @@ int main(int argc, char **argv)
 			}
 		}
 	}
-
 	pthread_kill(node->thread_arr[0], SIGUSR1);
 	pthread_kill(node->thread_arr[1], SIGUSR1);
 	if(joined) pthread_kill(node->thread_arr[2], SIGUSR1);
