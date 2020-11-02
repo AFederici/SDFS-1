@@ -134,7 +134,6 @@ vector<tuple<string, string, string>> Node::getTcpTargets(){
 void Node::threadConsistency(){
 	set<tuple<string, string, string>> sent;
 	void *t = (void*) calloc(1, sizeof(int*));
-	int i = 0;
 	while (sent.size() < REP){
 		tcpServent->request_targets.clear();
 		if (tcpServent->outgoingReq.type == FILEDEL){
@@ -151,10 +150,10 @@ void Node::threadConsistency(){
 			while ((index < numTargets) && sent.count(tcpServent->request_targets[index])) index++;
 			if (index < numTargets){
 				pthread_mutex_lock(&id_mutex);
-				if (pthread_create(&thread_arr[3+i], NULL, runTcpClient, (void *)tcpServent)) {
+				if (pthread_create(&thread_arr[3+attempts], NULL, runTcpClient, (void *)tcpServent)) {
 					cout << "Error:unable to create thread," << endl; pthread_mutex_unlock(&id_mutex); exit(-1);
 				}
-				tcpServent->thread_to_ind[thread_arr[3+i]] = attempts;
+				tcpServent->thread_to_ind[thread_arr[3+attempts]] = attempts;
 				pthread_mutex_unlock(&id_mutex);
 				attempts++;
 			}
