@@ -21,9 +21,15 @@ void closeFd(int fd){
     }
     close(fd);
 }
+
 int TcpSocket::outgoingConnection(tuple<string,string> address){
 	return outgoingConnection(get<0>(address), get<1>(address));
 }
+
+int TcpSocket::outgoingConnection(tuple<string,string, string> address){
+	return outgoingConnection(get<0>(address), get<1>(address));
+}
+
 
 int TcpSocket::outgoingConnection(string host, string port){
 	struct addrinfo hints;

@@ -100,7 +100,7 @@ void Node::readSdfsMessage(string m){
 
 
 
-vector<tuple<string, string>> Node::getTcpTargets(){
+vector<tuple<string, string, string>> Node::getTcpTargets(){
 	vector<tuple<string, string, string, int>> v;
 	for(auto& element: membershipList){
 		tuple<string, string, string> keyPair = element.first;

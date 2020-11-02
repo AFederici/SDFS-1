@@ -62,6 +62,7 @@ public:
 
 	TcpSocket(char* port, Directory * direct);
 	int outgoingConnection(tuple<string, string>);
+	int outgoingConnection(tuple<string, string, string>);
 	int outgoingConnection(string host, string port);
 	int receivePutRequest(int fd, string target);
 	int receiveGetRequest(int fd, string target);

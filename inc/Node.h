@@ -96,7 +96,7 @@ public:
 	void handleGet(string s1, string s2);
 	void readSdfsMessage(string m);
 	void handleDelete(string s1);
-	vector<tuple<string, string>> getTcpTargets();
+	vector<tuple<string, string, string>> getTcpTargets();
 
 private:
 	string populateMembershipMessage();
