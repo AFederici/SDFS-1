@@ -177,7 +177,8 @@ int TcpSocket::receiveMessage(int fd){
         return -1;
     }
 	buffer[received] = '\0';
-	string str(buffer, buffer + received);
+	string str(buffer, buffer + received + 1);
+	cout << "RECEIVED: " << received << " WITH A STRING CONVERSION " << str << endl;
     Messages msg = Messages(str);
 	cout << " RECEIVED REQUEST " << msg.toString() << endl;
 	fflush(stdout);
@@ -239,7 +240,10 @@ int TcpSocket::receiveFile(int fd, string local_file){
 	FILE * f = fopen(tmp.c_str(), "w+");
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	while (((numBytes = recv(fd, buffer, MAXBUFLEN, 0)) != -1)){
-		Messages msg = Messages(buffer);
+		buffer[received] = '\0';
+		string str(buffer, buffer + received + 1);
+		cout << "STRING CONVERSION " << str << endl;
+		Messages msg = Messages(str);
 		if (msg.type == FILEEND){
 			local_file = (local_file.size()) ? local_file : msg.payload;
 			fclose(f);
