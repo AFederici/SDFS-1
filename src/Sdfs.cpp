@@ -102,10 +102,10 @@ void Node::readSdfsMessage(string m){
 
 vector<tuple<string, string>> Node::getTcpTargets(){
 	vector<tuple<string, string, string, int>> v;
-	for(auto& element: file_system){
+	for(auto& element: membershipList){
 		tuple<string, string, string> keyPair = element.first;
 		if (get<0>(keyPair).compare(nodeInformation.ip)) continue;
-		v.push_back(make_tuple(get<0>(keyPair), get<1>(keyPair), get<2>(keyPair), get<0>(element.second)));
+		v.push_back(make_tuple(get<0>(keyPair), get<1>(keyPair), get<2>(keyPair), get<0>(file_system[keyPair])));
 	}
 	std::sort(v.begin(), v.end(), TupleCompare<3>());
 	vector<tuple<string, string, string>> targets;
