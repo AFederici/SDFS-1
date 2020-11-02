@@ -240,8 +240,8 @@ int TcpSocket::receiveFile(int fd, string local_file){
 	FILE * f = fopen(tmp.c_str(), "w+");
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	while (((numBytes = recv(fd, buffer, MAXBUFLEN, 0)) != -1)){
-		buffer[received] = '\0';
-		string str(buffer, buffer + received + 1);
+		buffer[numBytes] = '\0';
+		string str(buffer, buffer + numBytes + 1);
 		cout << "STRING CONVERSION " << str << endl;
 		Messages msg = Messages(str);
 		if (msg.type == FILEEND){
