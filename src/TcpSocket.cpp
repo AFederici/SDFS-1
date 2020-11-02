@@ -283,7 +283,7 @@ void TcpSocket::setupServer() {
 	}
 	serverSocket = socket_fd;
     int boolVal = 1;
-    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &boolVal, sizeof(int)) == -1){
+    if (setsockopt(socket_fd, SOL_SOCKET, (SO_REUSEADDR | SO_REUSEPORT), &boolVal, sizeof(int)) == -1){
         perror("setsockopt"); exit(1);
     }
 	if (::bind(socket_fd, res->ai_addr, res->ai_addrlen) == -1){ perror("bind"); exit(1); }

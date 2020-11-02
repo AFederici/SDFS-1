@@ -33,7 +33,7 @@ void UdpSocket::bindServer()
 		}
 
 		int boolVal = 1;
-	    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &boolVal, sizeof(int)) == -1){
+	    if (setsockopt(sockfd, SOL_SOCKET, (SO_REUSEADDR | SO_REUSEPORT), &boolVal, sizeof(int)) == -1){
 	        perror("setsockopt");
 			continue;
 	    }
