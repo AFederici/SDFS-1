@@ -90,6 +90,7 @@ int TcpSocket::receivePutRequest(int fd, string target){
 }
 
 int TcpSocket::receiveGetRequest(int fd, string target){
+	char buffer[16]; buffer[0] = '\0';
 	Messages msg;
 	int result = 0;
 	bool cond = true;
@@ -97,7 +98,7 @@ int TcpSocket::receiveGetRequest(int fd, string target){
 	if (dir->file_status.count(target)) result = dir->file_status[target];
 	else {
 		pthread_mutex_unlock(&dir_mutex);
-		sendMessage(fd, MISSING, "");
+		sendMessage(fd, MISSING, buffer);
 		return -1;
 	}
 	cond = (result == WRITELOCK);
@@ -109,7 +110,7 @@ int TcpSocket::receiveGetRequest(int fd, string target){
 		if (dir->file_status.count(target)) result = dir->file_status[target];
 		else {
 			pthread_mutex_unlock(&dir_mutex);
-			sendMessage(fd, MISSING, "");
+			sendMessage(fd, MISSING, buffer);
 			return -1;
 		}
 		cond = (result == WRITELOCK);
@@ -214,6 +215,11 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 	while (!feof(fr)){
 		size_t partialR = fread(buffer, 1, MAXBUFLEN-1, fr);
 		if (!partialR) break;
+		if (partialR == -1){
+			perror("file read failed");
+			free(buffer);
+			return -1;
+		}
 		buffer[partialR] = '\0';
 		if (sendMessage(fd, FILEDATA, buffer)) {
 			perror("write_server_put: send");

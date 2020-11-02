@@ -57,8 +57,8 @@ void *runTcpClient(void* tcpSocket)
 	int fileBytes = 0;
 	if (tcp->outgoingReq.type == FILEDEL){
 		if (tcp->sendMessage(fd, FILEDEL, tcp->outgoingReq.payload.c_str())) free(buffer);close(fd);return (void*)0;
-		if ((fileBytes = recv(fd, buffer, MAXBUFLEN, 0)) == -1){
-			perror("write_server_put: recv");free(buffer);close(fd);return (void*)0;
+		if ((fileBytes = read(fd, buffer, MAXBUFLEN, 0)) == -1){
+			perror("write_server_put: read");free(buffer);close(fd);return (void*)0;
 		}
 		buffer[fileBytes] = '\0';
 		Messages msg = Messages(buffer);
