@@ -120,7 +120,7 @@ string Node::populateMembershipMessage()
 			startTime = startTime.substr(0, startTime.find("\n"));
 			mem_list_to_send += nodeInformation.ip + "," + nodeInformation.udpPort + "," + startTime + ",";
 			tuple<string, string, string> mapKey(nodeInformation.ip, nodeInformation.udpPort, startTime); // member_id
-			mem_list_to_send += to_string(heartbeatCounter) + "," + to_string(0) + to_string(get<0>(this->file_system[mapKey])) + "\n";
+			mem_list_to_send += to_string(heartbeatCounter) + "," + to_string(0) + "," + to_string(get<0>(this->file_system[mapKey])) + "\n";
 			break;
 	}
 	return mem_list_to_send;
@@ -370,15 +370,13 @@ void Node::processHeartbeat(string message) {
 	vector<string> incomingMembershipList = splitString(message, "\n");
 	vector<string> membershipListEntry;
 	for(string list_entry: incomingMembershipList){
-#ifdef LOG_VERBOSE
 		cout << "handling with " << list_entry << endl;
-#endif
 		if (list_entry.size() == 0) {
 			continue;
 		}
 		membershipListEntry.clear();
 		membershipListEntry = splitString(list_entry, ",");
-		if (membershipListEntry.size() < 6) { continue; }
+		if (membershipListEntry.size() < 6) { cout << "ERRRORRRRR" << endl; fflush(stdout); continue; }
 		int incomingHeartbeatCounter = stoi(membershipListEntry[3]);
 		int failFlag = stoi(membershipListEntry[4]);
 		tuple<string,string,string> mapKey(membershipListEntry[0], membershipListEntry[1], membershipListEntry[2]);
@@ -504,14 +502,12 @@ void Node::readMessage(string message){
 			Messages response(JOINRESPONSE, introducerMembershipList);
 			vector<string> fields = splitString(msg.payload, ",");
 			cout << fields[0]<< "::" << fields[1] << " " << response.toString() << endl;
-			if(fields.size() >= 2){
-				udpServent->sendMessage(fields[0], fields[1], response.toString());
-			}
+			udpServent->sendMessage(fields[0], fields[1], response.toString());
 			break;
 		}
 
 		default:
-			readSdfsMessage(message); // where is this function defined?
+			readSdfsMessage(message);
 
 	}
 	//debugMembershipList();
@@ -536,7 +532,7 @@ int main(int argc, char **argv)
 	tuple<int, int, int> valueTuple(own.timestamp, own.heartbeatCounter, 0);
 	node->membershipList[mapKey] = valueTuple;
 	node->debugMembershipList();
-
+	get<0>(node->file_system[own.identity()] = 0;
 	int *ret;
 	string cmd;
 	bool joined = false;
