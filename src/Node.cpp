@@ -229,10 +229,6 @@ int Node::failureDetection(){
 		cout << "checking " << get<0>(keyTuple) << "/" << get<1>(keyTuple) << "/" << get<2>(keyTuple) << endl;
 #endif
 		if ((get<0>(keyTuple).compare(nodeInformation.ip) == 0) && (get<1>(keyTuple).compare(nodeInformation.udpPort) == 0)) {
-			// do not check itself
-#ifdef LOG_VERBOSE
-			cout << "skip it" << endl;
-#endif
 			continue;
 		}
 		if(get<2>(valueTuple) == 0){
@@ -361,7 +357,7 @@ void Node::processHeartbeat(string message) {
 	for(string list_entry: incomingMembershipList){
 		membershipListEntry.clear();
 		membershipListEntry = splitString(list_entry, ",");
-		for (auto &debug_entry : memberShipList) cout << debug_entry << " , ";
+		for (auto &debug_entry : membershipList) cout << debug_entry << " , ";
 		cout << endl;
 		if (membershipListEntry.size() < 6) { cout << "ERRRORRRRR" << endl; fflush(stdout); continue; }
 		int incomingHeartbeatCounter = stoi(membershipListEntry[3]);
