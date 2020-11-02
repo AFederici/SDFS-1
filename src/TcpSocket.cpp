@@ -135,14 +135,14 @@ int TcpSocket::sendPutRequest(int fd, string local, string target, int node_init
 	int fileBytes = 0;
 	if (node_initiated) local = dir->get_path(local);
 	if (sendFile(fd, local, target)) return -1;;
-	if ((fileBytes = recv(fd, buffer, MAXBUFLEN, 0)) == -1){
-		perror("write_server_put: recv");
+	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){
+		perror("write_server_put: read");
 		return -1;
 	}
 	buffer[fileBytes] = '\0';
 	Messages msg = Messages(buffer);
 	if (strcmp(msg.payload.c_str(), OK)){
-		perror("write_server_put: recv");
+		perror("write_server_put: read");
 		free(buffer);
 		return -2;
 	}
@@ -171,8 +171,8 @@ int TcpSocket::sendOK(int fd){
 int TcpSocket::receiveMessage(int fd){
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	ssize_t received = 0;
-	if ((received = recv(fd, buffer, MAXBUFLEN, 0)) <= 0){
-        perror("receiveMessage: recv");
+	if ((received = read(fd, buffer, MAXBUFLEN)) <= 0){
+        perror("receiveMessage: read");
 		free(buffer);
         return -1;
     }
@@ -239,7 +239,7 @@ int TcpSocket::receiveFile(int fd, string local_file){
 	string tmp = tmpnam (NULL);
 	FILE * f = fopen(tmp.c_str(), "w+");
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
-	while (((numBytes = recv(fd, buffer, MAXBUFLEN, 0)) != -1)){
+	while (((numBytes = read(fd, buffer, MAXBUFLEN)) > 0)){
 		buffer[numBytes] = '\0';
 		string str(buffer, buffer + numBytes + 1);
 		cout << "STRING CONVERSION " << str << endl;
