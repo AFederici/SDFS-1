@@ -522,7 +522,7 @@ int main(int argc, char **argv)
 		cout << "Error:unable to create thread," << rc << endl; exit(-1);
 	}
 	while(1){
-		cin >> cmd;
+		std::getline(std::cin, cmd);
 		if(cmd == "join"){
 			if (node->activeRunning) continue;
 			node->activeRunning = true;
