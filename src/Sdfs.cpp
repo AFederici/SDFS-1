@@ -109,7 +109,7 @@ vector<tuple<string, string>> Node::getTcpTargets(){
 	}
 	std::sort(v.begin(), v.end(), TupleCompare<3>());
 	vector<tuple<string, string, string>> targets;
-	int lenParam = min(v.size(), N_Rep);
+	int lenParam = (v.size() < N_rep) ? v.size() : N_rep;
 	for (int i = 0; i < lenParam; i++) targets.push_back(make_tuple(get<0>(v[i]), get<1>(v[i]), get<2>(v[i])));
 	int index = lenParam;
 	int target_num = 0;
