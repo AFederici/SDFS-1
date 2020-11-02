@@ -2,6 +2,7 @@
 
 vector<string> splitString(string s, string delimiter){
 	vector<string> result;
+	if (s.size() == 0) return result;
 	size_t pos_start = 0, pos_end, delim_len = delimiter.length();
 	string token;
 	while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {

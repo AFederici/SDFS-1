@@ -132,7 +132,7 @@ string Node::populateIntroducerMembershipMessage(){
 		tuple<string, string, string> keyTuple = element.first;
 		tuple<int, int, int> valueTuple = element.second;
 		mem_list_to_send += get<0>(keyTuple) + "," + get<1>(keyTuple) + "," + get<2>(keyTuple) + ",";
-		mem_list_to_send += to_string(get<0>(valueTuple)) + "," + to_string(get<2>(valueTuple));
+		mem_list_to_send += to_string(get<0>(valueTuple)) + "," + to_string(get<2>(valueTuple)) + ",";
 		mem_list_to_send += to_string(get<0>(this->file_system[keyTuple])) + "\n";
 	}
 	return mem_list_to_send;
@@ -370,10 +370,6 @@ void Node::processHeartbeat(string message) {
 	vector<string> incomingMembershipList = splitString(message, "\n");
 	vector<string> membershipListEntry;
 	for(string list_entry: incomingMembershipList){
-		cout << "handling with " << list_entry << endl;
-		if (list_entry.size() == 0) {
-			continue;
-		}
 		membershipListEntry.clear();
 		membershipListEntry = splitString(list_entry, ",");
 		if (membershipListEntry.size() < 6) { cout << "ERRRORRRRR" << endl; fflush(stdout); continue; }
