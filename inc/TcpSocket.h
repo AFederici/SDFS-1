@@ -61,7 +61,6 @@ public:
 	volatile int endSession[MAX_CLIENTS+1];
 
 	TcpSocket(char* port, Directory * direct);
-	int outgoingConnection(tuple<string, string> address);
 	int outgoingConnection(tuple<string, string, string> address);
 	int outgoingConnection(string host, string port);
 	int receivePutRequest(int fd, string target);
