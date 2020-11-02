@@ -137,13 +137,16 @@ vector<tuple<string, string>> Node::getTcpTargets(){
 
 void Node::threadConsistency(){
 	set<tuple<string, string>> sent;
-	vector<tuple<string, string>> targs;
-	tcpServent->request_targets.clear();
 	void *t = (void*) calloc(1, sizeof(int*));
 	int i = 0;
 	while (sent.size() < REP){
-		targs = getTcpTargets();
-		copy(targs.begin(), targs.end(), back_inserter(tcpServent->request_targets));
+		tcpServent->request_targets.clear();
+		if (tcpServent->outgoingReq.type == FILEDEL){
+			copy(get<1>(replicas_list[s1]).begin(), get<1>(replicas_list[s1]).end(), back_inserter(tcpServent->request_targets));
+		} else{
+			auto targ = getTcpTargets();
+			copy(targ.begin(), targ.end(), back_inserter(tcpServent->request_targets));
+		}
 		int index = 0;
 		for (int i = 0; i < (REP - sent.size()); i++){
 			while (sent.count(tcpServent->request_targets[index])) index++;
@@ -220,6 +223,8 @@ void Node::handleGet(string s1, string s2){
 }
 
 void Node::handleDelete(string s1){
+	tcpServent->request_targets.clear();
+	copy(get<1>(replicas_list[s1]).begin(), get<1>(replicas_list[s1]).end(), back_inserter(tcpServent->request_targets));
 	tcpServent->outgoingReq = Messages(FILEDEL, s1);
 	threadConsistency();
 }
