@@ -131,7 +131,7 @@ int TcpSocket::sendPutRequest(int fd, string local, string target, int node_init
 	int fileBytes = 0;
 	if (node_initiated) local = dir->get_path(local);
 	if (sendFile(fd, local, target)) return -1;;
-	if ((fileBytes = recv(fd, buffer, 1024, 0)) == -1){
+	if ((fileBytes = recv(fd, buffer, MAXBUFLEN, 0)) == -1){
 		perror("write_server_put: recv");
 		return -1;
 	}
@@ -203,7 +203,7 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 		return -1;
 	}
 	while (!feof(fr)){
-		size_t partialR = fread(buffer, 1, 1024, fr);
+		size_t partialR = fread(buffer, 1, MAXBUFLEN, fr);
 		if (!partialR) break;
 		if (sendMessage(fd, FILEDATA, buffer)) {
 			perror("write_server_put: send");
@@ -230,7 +230,7 @@ int TcpSocket::receiveFile(int fd, string local_file){
 	string tmp = tmpnam (NULL);
 	FILE * f = fopen(tmp.c_str(), "w+");
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
-	while (((numBytes = recv(fd, buffer, 1024, 0)) != -1)){
+	while (((numBytes = recv(fd, buffer, MAXBUFLEN, 0)) != -1)){
 		Messages msg = Messages(buffer);
 		if (msg.type == FILEEND){
 			local_file = (local_file.size()) ? local_file : msg.payload;

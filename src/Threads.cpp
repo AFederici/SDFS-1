@@ -52,7 +52,7 @@ void *runTcpClient(void* tcpSocket)
 	int fileBytes = 0;
 	if (tcp->outgoingReq.type == FILEDEL){
 		if (tcp->sendMessage(fd, FILEDEL, tcp->outgoingReq.payload.c_str())) free(buffer);close(fd);return (void*)0;
-		if ((fileBytes = recv(fd, buffer, 1024, 0)) == -1){
+		if ((fileBytes = recv(fd, buffer, MAXBUFLEN, 0)) == -1){
 			perror("write_server_put: recv");free(buffer);close(fd);return (void*)0;
 		}
 		buffer[fileBytes] = '\0';
@@ -78,7 +78,7 @@ void *runTcpClient(void* tcpSocket)
 void testMessages(UdpSocket* udp)
 {
 	sleep(2);
-	for (int j = 0; j < 4; j++) {
+	for (int j = 0; j < N_Rep; j++) {
 		udp->sendMessage("127.0.0.1", UDP_PORT, "test message "+to_string(j));
 	}
 	sleep(1);
@@ -89,7 +89,7 @@ void *testMessages(void* tcp)
 	TcpSocket * t = (TcpSocket *) tcp;
 	sleep(2);
 	cout << "p1" << endl;
-	for (int j = 0; j < 4; j++) {
+	for (int j = 0; j < N_Rep; j++) {
 		int fd = t->outgoingConnection("127.0.0.1", TCP_PORT);
 		t->sendMessage(fd, ACK, "yoooo AJ");
 		sleep(1);

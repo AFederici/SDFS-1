@@ -51,9 +51,9 @@ void Node::readSdfsMessage(string m){
 			break;
         }
         case REPLICATE: {
-			//either file is removed or theres now 4 copies
+			//either file is removed or theres now N_Rep copies
 			tuple<int, set<tuple<string, string, string>>> val = replicas_list[msg.payload];
-			if (get<0>(val) == 0 || (get<1>(val)).size() >= 4) return;
+			if (get<0>(val) == 0 || (get<1>(val)).size() >= N_Rep) return;
 			if (tcpServent->repairReq.payload.size()) return; //repair thread busy
 			string s = msg.payload + "," + msg.payload;
 			tcpServent->repairReq = Messages(FILEDATA, s);
@@ -87,8 +87,8 @@ void Node::readSdfsMessage(string m){
 			pthread_mutex_unlock(&repair_mutex);
 			if (val != -1) return; //repair thread is busy
             tuple<int, set<tuple<string, string, string>> val = replicas_list[msg.payload];
-            //either file is removed, theres now 4 copies, or we already have it
-            if (get<0>val == 0 || (get<1>val).size() >= 4 || (get<1>val).count(nodeInformation.identity())) return;
+            //either file is removed, theres now N_Rep copies, or we already have it
+            if (get<0>val == 0 || (get<1>val).size() >= N_Rep || (get<1>val).count(nodeInformation.identity())) return;
             string payload = nodeInformation.toString() + "," + msg.payload;
             Messages resp(REPLICACK, payload);
             udpServent->sendMessage(fields[0], fields[1], resp.toString());
@@ -109,10 +109,11 @@ vector<tuple<string, string>> Node::getTcpTargets(){
 	}
 	std::sort(v.begin(), v.end(), TupleCompare<3>());
 	vector<tuple<string, string, string>> targets;
-	for (int i = 0; i < 4; i++) targets.push_back(make_tuple(get<0>(v[i]), get<1>(v[i]), get<2>(v[i])));
-	int index = 4;
+	int lenParam = min(v.size(), N_Rep);
+	for (int i = 0; i < lenParam; i++) targets.push_back(make_tuple(get<0>(v[i]), get<1>(v[i]), get<2>(v[i])));
+	int index = lenParam;
 	int target_num = 0;
-	while (target_num < 4 && index < v.size()){
+	while (target_num < lenParam && index < v.size()){
 		//if fail state find a new option
 		if (get<2>(membershipList[targets[target_num]]))
 		{
@@ -138,11 +139,11 @@ void Node::threadConsistency(){
 	vector<tuple<string, string>> targs;
 	tcpServent->request_targets.clear();
 	void *t = (void*) calloc(1, sizeof(int*));
-	while (sent.size() < 4){
+	while (sent.size() < N_Rep){
 		targs = getTcpTargets();
 		copy(targs.begin(), targs.end(), back_inserter(tcpServent->request_targets));
 		int index = 0;
-		for (int i = 0; i < (4 - sent.size()); i++){
+		for (int i = 0; i < (N_Rep - sent.size()); i++){
 			while (sent.count(tcpServent->request_targets[index])) index++;
 			pthread_mutex_lock(&id_mutex);
 			if (pthread_create(&thread_arr[3+i], NULL, runTcpClient, (void *)tcpServent)) {
@@ -151,10 +152,10 @@ void Node::threadConsistency(){
 			tcpServent->thread_to_ind[thread_arr[3+i]] = index;
 			pthread_mutex_unlock(&id_mutex);
 		}
-		for (int i = 0; i < (4 - sent.size()); i++){
+		for (int i = 0; i < (N_Rep - sent.size()); i++){
 			t = 0;
-			pthread_join(thread_arr[3+i], &t);
-			if (t) sent.insert(tcpServent->request_targets[tcpServent->thread_to_ind[thread_arr[3+i]]]);
+			pthread_join(thread_arr[(N_Rep-1)+i], &t);
+			if (t) sent.insert(tcpServent->request_targets[tcpServent->thread_to_ind[thread_arr[(N_Rep-1)+i]]]);
 		}
 	}
 	free(t);
