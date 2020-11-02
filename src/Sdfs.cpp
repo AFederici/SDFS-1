@@ -135,9 +135,12 @@ vector<tuple<string, string>> Node::getTcpTargets(){
 
 void Node::threadConsistency(){
 	set<tuple<string, string>> sent;
+	vector<tuple<string, string>> targs;
+	tcpServent->request_targets.clear();
 	void *t = (void*) calloc(1, sizeof(int*));
 	while (sent.size() < 4){
-		tcpServent->request_targets = getTcpTargets();
+		targs = getTcpTargets();
+		copy(targs.begin(), targs.end(), back_inserter(tcpServent->request_targets));
 		int index = 0;
 		for (int i = 0; i < (4 - sent.size()); i++){
 			while (sent.count(tcpServent->request_targets[index])) index++;

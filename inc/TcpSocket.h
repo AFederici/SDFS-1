@@ -24,7 +24,7 @@
 #include "Directory.h"
 #include "MessageTypes.h"
 #include "Messages.h"
-#ifdef __linux__ 
+#ifdef __linux__
 #include <bits/stdc++.h>
 #endif
 
@@ -51,7 +51,7 @@ public:
     int serverSocket;
 
 	vector<tuple<string, string>> request_targets;
-	Messages outgoingReq; // I'm not sure why it doesn't recognize the Messages type
+	Messages outgoingReq;
 	Messages repairReq;
 	map<pthread_t, int> thread_to_ind;
 	unsigned long byteSent;
