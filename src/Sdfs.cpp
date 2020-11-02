@@ -142,6 +142,7 @@ void Node::threadConsistency(){
 	while (sent.size() < REP){
 		tcpServent->request_targets.clear();
 		if (tcpServent->outgoingReq.type == FILEDEL){
+			string s1 = tcpServent->outgoingReq.payload;
 			copy(get<1>(replicas_list[s1]).begin(), get<1>(replicas_list[s1]).end(), back_inserter(tcpServent->request_targets));
 		} else{
 			auto targ = getTcpTargets();
@@ -223,8 +224,6 @@ void Node::handleGet(string s1, string s2){
 }
 
 void Node::handleDelete(string s1){
-	tcpServent->request_targets.clear();
-	copy(get<1>(replicas_list[s1]).begin(), get<1>(replicas_list[s1]).end(), back_inserter(tcpServent->request_targets));
 	tcpServent->outgoingReq = Messages(FILEDEL, s1);
 	threadConsistency();
 }
