@@ -106,23 +106,12 @@ void Node::updateNodeHeartbeatAndTime()
 
 string Node::populateMembershipMessage()
 {
-	//The string we send will be seperated line by line --> IP,UDP_PORT,HeartbeatCounter,FailFlag
+	if (this->runningMode == GOSSIP) return populateIntroducerMembershipMessage(); //same functionality
+	string startTime = ctime(&startTimestamp);
 	string mem_list_to_send = "";
-	//Assume destination already exists in the membership list of this node, just a normal heartbeat
-	switch (this->runningMode)
-	{
-		case GOSSIP:
-			mem_list_to_send = populateIntroducerMembershipMessage(); //same functionality
-			break;
-
-		default:
-			string startTime = ctime(&startTimestamp);
-			startTime = startTime.substr(0, startTime.find("\n"));
-			mem_list_to_send += nodeInformation.ip + "," + nodeInformation.udpPort + "," + startTime + ",";
-			tuple<string, string, string> mapKey(nodeInformation.ip, nodeInformation.udpPort, startTime); // member_id
-			mem_list_to_send += to_string(heartbeatCounter) + "," + to_string(0) + "," + to_string(get<0>(this->file_system[mapKey])) + "\n";
-			break;
-	}
+	startTime = startTime.substr(0, startTime.find("\n"));
+	mem_list_to_send += nodeInformation.ip + "," + nodeInformation.udpPort + "," + startTime + ",";
+	mem_list_to_send += to_string(heartbeatCounter) + "," + to_string(0) + "," + to_string(get<0>(this->file_system[nodeInformation.identity()])) + "\n";
 	return mem_list_to_send;
 }
 
@@ -175,16 +164,16 @@ void Node::masterDetection(){
 	}
 	else { votes.clear(); }
 	if (port.size() > 0) {
-		if (strcmp(potential.c_str(), nodeInformation.ip.c_str())){ // fixed typo
+		if (strcmp(potential.c_str(), nodeInformation.ip.c_str())){
 			Messages msg(VOTE, nodeInformation.toString());
 			udpServent->sendMessage(potential, port, msg.toString());
 		}
 		else{
-			votes.insert(nodeInformation.identity()); //add ==> insert
+			votes.insert(nodeInformation.identity());
 			int alive_nodes = membershipList.size();
 			if (alive_nodes >= 4 && votes.size() > ((alive_nodes / 2) + 1)){
 				masterInformation = nodeInformation;
-				Messages msg(VOTEACK, nodeInformation.toString()); //identity ==> toString
+				Messages msg(VOTEACK, nodeInformation.toString());
 				for (auto &el : votes){
 					if (get<0>(el).compare(nodeInformation.ip)){
 						udpServent->sendMessage(get<0>(el), get<1>(el), msg.toString());
@@ -372,6 +361,8 @@ void Node::processHeartbeat(string message) {
 	for(string list_entry: incomingMembershipList){
 		membershipListEntry.clear();
 		membershipListEntry = splitString(list_entry, ",");
+		for (auto &debug_entry : memberShipList) cout << debug_entry << " , ";
+		cout << endl;
 		if (membershipListEntry.size() < 6) { cout << "ERRRORRRRR" << endl; fflush(stdout); continue; }
 		int incomingHeartbeatCounter = stoi(membershipListEntry[3]);
 		int failFlag = stoi(membershipListEntry[4]);
@@ -386,11 +377,6 @@ void Node::processHeartbeat(string message) {
 				this->logWriter->printTheLog(LEAVE, message);
 				return;
 			}
-
-			// do not check own heartbeat
-#ifdef LOG_VERBOSE
-			cout << "skip it" << endl;
-#endif
 			continue;
 		}
 		auto it = this->membershipList.find(mapKey);
@@ -497,7 +483,7 @@ void Node::readMessage(string message){
 			introducerMembershipList = populateIntroducerMembershipMessage();
 			Messages response(JOINRESPONSE, introducerMembershipList);
 			vector<string> fields = splitString(msg.payload, ",");
-			cout << fields[0]<< "::" << fields[1] << " " << response.toString() << endl;
+			//cout << fields[0]<< "::" << fields[1] << " " << response.toString() << endl;
 			udpServent->sendMessage(fields[0], fields[1], response.toString());
 			break;
 		}

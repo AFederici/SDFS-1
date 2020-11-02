@@ -79,6 +79,7 @@ void UdpSocket::sendMessage(string ip, string port, string message)
 
 	if ((rv = getaddrinfo(ip.c_str(), port.c_str(), &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		cout << "getaddrerror " << ip.c_str() << "::" << port.c_str() << endl;
 		return;
 	}
 
