@@ -531,12 +531,12 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			joined = true;
-		} else if(cmd == "leave"){ //TODO: accept: Invalid argument
+		} else if(cmd == "leave"){
 			if(joined){
 				node->tcpServent->endSession[MAX_CLIENTS] = 1;
 				node->activeRunning = false;
 				node->tcpServent->dir->clear();
-				pthread_join(node->thread_arr[2], (void **)&ret);
+				pthread_join(node->thread_arr[2], (void **)&ret); //TODO: figure out correct threads to join, currently hangs here
 				pthread_join(node->thread_arr[1], (void **)&ret);
 				closeFd(node->tcpServent->serverSocket);
 				string message = "["+to_string(node->localTimestamp)+"] node "+node->nodeInformation.ip+"/"+node->nodeInformation.udpPort+" is left";
@@ -561,8 +561,10 @@ int main(int argc, char **argv)
 		} else if(cmd == "store"){
 			node->tcpServent->dir->store();
 		} else {
+			cout << "CMD: " << cmd << endl; //seg faulty
 			vector<string> ss = splitString(cmd, " ");
 			if (ss[0] == "put"){
+				cout << "a1: " << ss[1] << " a2: " << ss[2] << endl;
 				node->handlePut(ss[1], ss[2]);
 			} else if (ss[0] == "get"){
 				node->handleGet(ss[1], ss[2]);
@@ -572,7 +574,7 @@ int main(int argc, char **argv)
 				cout << "---- ls ----" << endl;
 				if (node->replicas_list.count(ss[1])){
 					if (get<0>(node->replicas_list[ss[1]])){
-						for (auto &el : get<1>(node->replicas_list[ss[1]])){ // added node-> Not sure what's going on here...
+						for (auto &el : get<1>(node->replicas_list[ss[1]])){
 							cout << Member(get<0>(el), get<1>(el)).toString() << endl;
 						}
 					}
