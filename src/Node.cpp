@@ -532,7 +532,7 @@ int main(int argc, char **argv)
 	tuple<int, int, int> valueTuple(own.timestamp, own.heartbeatCounter, 0);
 	node->membershipList[mapKey] = valueTuple;
 	node->debugMembershipList();
-	get<0>(node->file_system[own.identity()] = 0;
+	get<0>(node->file_system[own.identity()]) = 0;
 	int *ret;
 	string cmd;
 	bool joined = false;
