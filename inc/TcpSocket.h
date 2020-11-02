@@ -50,7 +50,7 @@ public:
 	char* serverPort;
     int serverSocket;
 
-	vector<tuple<string, string>> request_targets;
+	vector<tuple<string, string, string>> request_targets;
 	Messages outgoingReq;
 	Messages repairReq;
 	map<pthread_t, int> thread_to_ind;

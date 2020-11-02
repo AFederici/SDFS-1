@@ -128,15 +128,11 @@ vector<tuple<string, string>> Node::getTcpTargets(){
 		}
 		target_num++;
 	}
-	vector<tuple<string, string>> ret;
-	for (auto &entry : targets){
-		ret.push_back(make_tuple(get<0>(entry), get<1>(entry)));
-	}
-	return ret;
+	return targets;
 }
 
 void Node::threadConsistency(){
-	set<tuple<string, string>> sent;
+	set<tuple<string, string, string>> sent;
 	void *t = (void*) calloc(1, sizeof(int*));
 	int i = 0;
 	while (sent.size() < REP){
@@ -210,7 +206,7 @@ void Node::handleGet(string s1, string s2){
 			return;
 		}
 		for (auto &el : get<1>(replicas_list[s1])){
-			tcpServent->request_targets.push_back(make_tuple(get<0>(el), get<1>(el)));
+			tcpServent->request_targets.push_back(el);
 			pthread_mutex_lock(&id_mutex);
 			if (pthread_create(&thread_arr[3], NULL, runTcpClient, (void *)tcpServent)) {
 				cout << "Error:unable to create thread," << endl; exit(-1);
