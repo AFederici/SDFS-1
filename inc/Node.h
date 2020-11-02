@@ -27,7 +27,7 @@ using namespace std;
 #define INTRODUCER "fa20-cs425-g02-01.cs.illinois.edu"
 #define UDP_PORT "4950"
 #define TCP_PORT "7777"
-
+#define REP 4 // file replicas
 
 #define LOGGING_FILE_NAME "logs.txt"
 
@@ -36,7 +36,6 @@ using namespace std;
 #define T_timeout 3 // in T_period
 #define T_cleanup 3 // in T_period
 #define N_b 3 // how many nodes GOSSIP want to use
-#define N_Rep 4 // file replicas
 // ------
 
 #define T_switch 3 // in seconds
