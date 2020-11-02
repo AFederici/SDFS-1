@@ -220,7 +220,7 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 		return -1;
 	}
 	if (shutdown(serverSocket, SHUT_WR)) {perror("shutdown"); exit(1);}
-	cout << " GET COMPLETE " << msg.toString() << endl;
+	cout << " GET COMPLETE " << target << endl;
 	fflush(stdout);
 	return 0;
 }
