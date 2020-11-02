@@ -175,13 +175,14 @@ int TcpSocket::sendOK(int fd){
 int TcpSocket::receiveMessage(int fd){
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	ssize_t received = 0;
-	if ((received = recv(fd, buffer, MAXBUFLEN, 0)) == -1){
+	if ((received = recv(fd, buffer, MAXBUFLEN, 0)) <= 0){
         perror("receiveMessage: recv");
 		free(buffer);
         return -1;
     }
 	buffer[received] = '\0';
-    Messages msg = Messages(buffer);
+	string str(buffer, buffer + received);
+    Messages msg = Messages(str);
 	cout << " RECEIVED REQUEST " << msg.toString() << endl;
 	fflush(stdout);
 	if (msg.type == FILEDATA){
