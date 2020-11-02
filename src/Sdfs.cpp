@@ -68,6 +68,8 @@ void Node::readSdfsMessage(string m){
             if (masterInformation.ip.size() && (masterInformation.ip) == (nodeInformation.ip)) return;
             vector<string> address = splitString(msg.payload, "::");
             masterInformation = Member(address[0], address[1]);
+			cout << " NEW MASTER " << masterInformation.toString() << endl;
+			fflush(stdout);
 			break;
         }
 		/*

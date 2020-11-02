@@ -82,6 +82,8 @@ int TcpSocket::receivePutRequest(int fd, string target){
 	dir->file_status[target] = OPEN;
 	pthread_mutex_unlock(&dir_mutex);
 	if (status == -2) { cout << "MISSING FILE " << target << endl; fflush(stdout);}
+	cout << " PUT COMPLETE " << msg.toString() << endl;
+	fflush(stdout);
 	return status;
 }
 
@@ -169,7 +171,7 @@ int TcpSocket::receiveMessage(int fd){
         return -1;
     }
     Messages msg = Messages(buffer);
-	cout << msg.toString() << endl;
+	cout << " RECEIVED REQUEST " << msg.toString() << endl;
 	fflush(stdout);
 	if (msg.type == FILEDATA){
 		if (receivePutRequest(fd, msg.payload) == 0) sendOK(fd);
@@ -181,6 +183,8 @@ int TcpSocket::receiveMessage(int fd){
 		dir->remove_file(msg.payload);
 		get<1>((dir->file_heartbeats[msg.payload])) = 0;
 		sendOK(fd);
+		cout << " DELETION COMPLETE " << msg.toString() << endl;
+		fflush(stdout);
 	}
 	else if (msg.type == FILEGET){
 		receiveGetRequest(fd, msg.payload);
@@ -216,6 +220,8 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 		return -1;
 	}
 	if (shutdown(serverSocket, SHUT_WR)) {perror("shutdown"); exit(1);}
+	cout << " GET COMPLETE " << msg.toString() << endl;
+	fflush(stdout);
 	return 0;
 }
 
@@ -231,17 +237,20 @@ int TcpSocket::receiveFile(int fd, string local_file){
 			fclose(f);
 			remove(local_file.c_str());
 			rename(tmp.c_str(), local_file.c_str());
+			free(buffer);
 			return 0;
 		}
 		if (msg.type == MISSING){
 			fclose(f);
 			remove(local_file.c_str());
+			free(buffer);
 			return -2;
 		}
         if (dir->write_file(f, buffer + msg.fillerLength(), numBytes - msg.fillerLength())) break;
     }
 	fclose(f);
 	remove(tmp.c_str());
+	free(buffer);
 	return -1;
 }
 
