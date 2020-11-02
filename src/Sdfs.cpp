@@ -149,7 +149,7 @@ void Node::threadConsistency(){
 			while (sent.count(tcpServent->request_targets[index])) index++;
 			pthread_mutex_lock(&id_mutex);
 			if (pthread_create(&thread_arr[3+i], NULL, runTcpClient, (void *)tcpServent)) {
-				cout << "Error:unable to create thread," << endl; exit(-1);
+				cout << "Error:unable to create thread," << endl; pthread_mutex_unlock(&id_mutex); exit(-1);
 			}
 			tcpServent->thread_to_ind[thread_arr[3+i]] = index;
 			pthread_mutex_unlock(&id_mutex);
@@ -157,8 +157,10 @@ void Node::threadConsistency(){
 		index = 0;
 		while (index < (REP - sent.size())){
 			t = 0;
-			pthread_join(thread_arr[(REP-1)+index], &t);
-			if (t) sent.insert(tcpServent->request_targets[tcpServent->thread_to_ind[thread_arr[(REP-1)+i]]]);
+			pthread_join(thread_arr[3+index], &t);
+			pthread_mutex_lock(&id_mutex);
+			if (t) sent.insert(tcpServent->request_targets[tcpServent->thread_to_ind[thread_arr[3+index]]]);
+			pthread_mutex_unlock(&id_mutex);
 		}
 	}
 	free(t);
@@ -209,7 +211,7 @@ void Node::handleGet(string s1, string s2){
 			tcpServent->request_targets.push_back(el);
 			pthread_mutex_lock(&id_mutex);
 			if (pthread_create(&thread_arr[3], NULL, runTcpClient, (void *)tcpServent)) {
-				cout << "Error:unable to create thread," << endl; exit(-1);
+				cout << "Error:unable to create thread," << endl; pthread_mutex_unlock(&id_mutex); exit(-1);
 			}
 			tcpServent->thread_to_ind[thread_arr[3]] = tcpServent->request_targets.size()-1;
 			pthread_mutex_unlock(&id_mutex);
