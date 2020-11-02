@@ -531,18 +531,18 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			joined = true;
-		} else if(cmd == "leave"){
+		} else if(cmd == "leave"){ //TODO: accept: Invalid argument
 			if(joined){
+				node->tcpServent->endSession[MAX_CLIENTS] = 1;
 				node->activeRunning = false;
-				node->tcpServent->endSession[MAX_CLIENTS] = 1; // fixed typo
 				node->tcpServent->dir->clear();
-				closeFd(node->tcpServent->serverSocket); //  removed caller and fixed typo
 				pthread_join(node->thread_arr[2], (void **)&ret);
 				pthread_join(node->thread_arr[1], (void **)&ret);
+				closeFd(node->tcpServent->serverSocket);
 				string message = "["+to_string(node->localTimestamp)+"] node "+node->nodeInformation.ip+"/"+node->nodeInformation.udpPort+" is left";
 				cout << "[LEAVE]" << message.c_str() << endl;
 				node->logWriter->printTheLog(LEAVE, message);
-				sleep(2); // wait for logging
+				sleep(2); //wait for logging
 				joined = false;
 			}
 		} else if(cmd == "id"){
@@ -559,8 +559,7 @@ int main(int argc, char **argv)
 		} else if(cmd == "mode") {
 			cout << "In " << node->runningMode << " mode" << endl;
 		} else if(cmd == "store"){
-			node->tcpServent->dir->store(); // added node->
-			break;
+			node->tcpServent->dir->store();
 		} else {
 			vector<string> ss = splitString(cmd, " ");
 			if (ss[0] == "put"){
