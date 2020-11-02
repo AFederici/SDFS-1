@@ -64,7 +64,7 @@ void *runTcpClient(void* tcpSocket)
 			free(buffer);close(fd);return (void*)0;
 		}
 	} else if (tcp->outgoingReq.type == FILEDATA){
-		vector<string> ss = splitString(tcp->outgoingReq.payload, ","); // splitString in util.h? delimiter needed
+		vector<string> ss = splitString(tcp->outgoingReq.payload, ",");
 		if (tcp->sendPutRequest(fd, ss[0], ss[1], 0)) { free(buffer);close(fd);return (void*)0;  }
 	} else if (tcp->outgoingReq.type == FILEGET){
 		vector<string> ss = splitString(tcp->outgoingReq.payload, ",");
