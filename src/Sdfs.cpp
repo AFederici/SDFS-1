@@ -6,7 +6,7 @@ int Node::directoryToNode()
 	vector<tuple<string,string,string>> targetNodes = getRandomNodesToGossipTo();
 	for (uint i=0; i<targetNodes.size(); i++) {
 		Messages msg(FILESYSTEM, to_send);
-		udpServent->sendMessage(get<0>(targetNodes[i]), get<0>(targetNodes[i]), msg.toString());
+		udpServent->sendMessage(get<0>(targetNodes[i]), get<1>(targetNodes[i]), msg.toString());
 	}
 	return 0;
 }

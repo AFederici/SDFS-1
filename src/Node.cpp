@@ -357,9 +357,9 @@ void Node::processHeartbeat(string message) {
 	for(string list_entry: incomingMembershipList){
 		membershipListEntry.clear();
 		membershipListEntry = splitString(list_entry, ",");
-		for (auto &debug_entry : membershipListEntry) cout << debug_entry << " , ";
-		cout << endl;
-		if (membershipListEntry.size() < 6) { cout << "ERRRORRRRR" << endl; fflush(stdout); continue; }
+		//for (auto &debug_entry : membershipListEntry) cout << debug_entry << " , ";
+		//cout << endl;
+		if (membershipListEntry.size() < 6) { cout << "less than 6 items in entry" << endl; fflush(stdout); continue; }
 		int incomingHeartbeatCounter = stoi(membershipListEntry[3]);
 		int failFlag = stoi(membershipListEntry[4]);
 		tuple<string,string,string> mapKey(membershipListEntry[0], membershipListEntry[1], membershipListEntry[2]);
