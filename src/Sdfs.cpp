@@ -153,9 +153,9 @@ void Node::threadConsistency(){
 				if (pthread_create(&thread_arr[3+attempts], NULL, runTcpClient, (void *)tcpServent)) {
 					cout << "Error:unable to create thread," << endl; pthread_mutex_unlock(&id_mutex); exit(-1);
 				}
-				cout << "RUNNING CLIENT " << thread_arr[3+attempts] << "|" << index << endl;
 				tcpServent->thread_to_ind[thread_arr[3+attempts]] = index;
 				attempts++;
+				index++;
 				pthread_mutex_unlock(&id_mutex);
 			}
 		}

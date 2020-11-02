@@ -154,7 +154,8 @@ int TcpSocket::sendPutRequest(int fd, string local, string target, int node_init
 
 int TcpSocket::sendMessage(int fd, MessageType mt, const char * buffer){
     int numBytes = 0;
-    Messages msg = Messages(mt, buffer).toString();
+	string str(buffer);
+    Messages msg = Messages(mt, str).toString();
     if ((numBytes = send(fd, msg.toString().c_str(), msg.toString().size(), 0)) == -1) {
         perror("sendOK: send");
         return -1;
@@ -179,9 +180,8 @@ int TcpSocket::receiveMessage(int fd){
     }
 	buffer[received] = '\0';
 	string str(buffer, buffer + received + 1);
-	cout << "RECEIVED: " << received << " WITH A STRING CONVERSION " << str << endl;
     Messages msg = Messages(str);
-	cout << " RECEIVED REQUEST " << msg.toString() << endl;
+	cout << " RECEIVED REQUEST " << msg.type << endl;
 	fflush(stdout);
 	if (msg.type == FILEDATA){
 		if (receivePutRequest(fd, msg.payload) == 0) sendOK(fd);
@@ -248,7 +248,6 @@ int TcpSocket::receiveFile(int fd, string local_file){
 	while (((numBytes = read(fd, buffer, MAXBUFLEN)) > 0)){
 		buffer[numBytes] = '\0';
 		string str(buffer, buffer + numBytes + 1);
-		cout << "STRING CONVERSION " << str << endl;
 		Messages msg = Messages(str);
 		if (msg.type == FILEEND){
 			local_file = (local_file.size()) ? local_file : msg.payload;

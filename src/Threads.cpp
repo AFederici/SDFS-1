@@ -51,7 +51,6 @@ void *runTcpClient(void* tcpSocket)
 	cout << pthread_self() << "|" << tcp->thread_to_ind[pthread_self()] << endl;
 	fflush(stdout);
 	pthread_mutex_unlock(&id_mutex);
-	cout << "RUNNING CLINET " << id << endl;
 	int fd = tcp->outgoingConnection(tcp->request_targets[id]);
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	int fileBytes = 0;
