@@ -174,11 +174,13 @@ int TcpSocket::sendOK(int fd){
 
 int TcpSocket::receiveMessage(int fd){
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
-	if (recv(fd, buffer, MAXBUFLEN, 0) == -1){
+	ssize_t received = 0;
+	if ((received = recv(fd, buffer, MAXBUFLEN, 0)) == -1){
         perror("receiveMessage: recv");
 		free(buffer);
         return -1;
     }
+	buffer[received] = '\0';
     Messages msg = Messages(buffer);
 	cout << " RECEIVED REQUEST " << msg.toString() << endl;
 	fflush(stdout);
