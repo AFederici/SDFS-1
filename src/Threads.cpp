@@ -23,7 +23,7 @@ void *runRepairThread(void* node){
 	int fd = n->tcpServent->outgoingConnection(get<0>(targets[0]), get<1>(targets[0]));
 	n->tcpServent->sendPutRequest(fd, n->tcpServent->repairReq.payload, n->tcpServent->repairReq.payload, 1); // needs one more arg
 	close(fd);
-	n->tcpServent->repairReq = Messages(FILEDATA, "");
+	n->tcpServent->repairReq = Messages(FILEPUT, "");
 	return NULL;
 }
 
@@ -68,7 +68,7 @@ void *runTcpClient(void* tcpSocket)
 				tcp->outgoingReq.payload << " | " << msg.payload << endl;
 			free(buffer);close(fd);return (void*)0;
 		}
-	} else if (tcp->outgoingReq.type == FILEDATA){
+	} else if (tcp->outgoingReq.type == FILEPUT){
 		vector<string> ss = splitString(tcp->outgoingReq.payload, ",");
 		if (tcp->sendPutRequest(fd, ss[0], ss[1], 0)) { free(buffer);close(fd);return (void*)0;  }
 	} else if (tcp->outgoingReq.type == FILEGET){

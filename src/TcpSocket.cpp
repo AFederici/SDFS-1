@@ -53,10 +53,10 @@ int TcpSocket::outgoingConnection(string host, string port){
 }
 
 int TcpSocket::receivePutRequest(int fd, string target){
-    Messages msg;
 	int result = 0;
 	int status = 0;
 	bool cond = true;
+	//target is file end shit
 	get<0>(dir->file_heartbeats[target])++;
 	get<1>((dir->file_heartbeats[target])) = 1;
 	pthread_mutex_lock(&dir_mutex);
@@ -84,7 +84,7 @@ int TcpSocket::receivePutRequest(int fd, string target){
 	dir->file_status[target] = OPEN;
 	pthread_mutex_unlock(&dir_mutex);
 	if (status == -2) { cout << "MISSING FILE " << target << endl; fflush(stdout);}
-	cout << " PUT RECEIVED " << msg.toString() << endl;
+	cout << " PUT RECEIVED " << endl;
 	fflush(stdout);
 	return status;
 }
@@ -135,6 +135,7 @@ int TcpSocket::sendPutRequest(int fd, string local, string target, int node_init
 	char * buffer = (char*)calloc(1,MAXBUFLEN);
 	int fileBytes = 0;
 	if (node_initiated) local = dir->get_path(local);
+	if (sendMessage(fd, FILEPUT, target.c_str())) return -1;
 	if (sendFile(fd, local, target)) return -1;;
 	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){
 		perror("write_server_put: read");
@@ -179,14 +180,12 @@ int TcpSocket::receiveMessage(int fd){
 		free(buffer);
         return -1;
     }
-	cout << "BYTES: " << numBytes << " ";
 	buffer[numBytes] = '\0';
 	string str(buffer);
-	cout << "RESULT " << str.substr(0,2) << endl;
     Messages msg = Messages(str);
-	cout << " RECEIVED REQUEST " << msg.type << endl;
+	cout << " RECEIVED REQUEST " << messageTypes[msg.type] << endl;
 	fflush(stdout);
-	if (msg.type == FILEDATA){
+	if (msg.type == FILEPUT){
 		if (receivePutRequest(fd, msg.payload) == 0) sendOK(fd);
 	}
 	else if (msg.type == FILEDEL){
@@ -254,7 +253,6 @@ int TcpSocket::receiveFile(int fd, string local_file){
 		string str(buffer);
 		Messages msg = Messages(str);
 		if (msg.type == FILEEND){
-			local_file = (local_file.size()) ? local_file : msg.payload;
 			fclose(f);
 			remove(local_file.c_str());
 			rename(tmp.c_str(), local_file.c_str());
@@ -263,7 +261,7 @@ int TcpSocket::receiveFile(int fd, string local_file){
 		}
 		if (msg.type == MISSING){
 			fclose(f);
-			remove(local_file.c_str());
+			remove(tmp.c_str());
 			free(buffer);
 			return -2;
 		}

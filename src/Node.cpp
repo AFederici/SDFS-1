@@ -19,7 +19,7 @@ Node::Node(char * p1, char * p2, ModeType mode){
 	prepareToSwitch = false;
 	logWriter = new Logger(LOGGING_FILE_NAME);
 	masterInformation = Member();
-	tcpServent->repairReq = Messages(FILEDATA, "");
+	tcpServent->repairReq = Messages(FILEPUT, "");
 }
 
 Node::Node(ModeType mode)
@@ -38,7 +38,7 @@ Node::Node(ModeType mode)
 	prepareToSwitch = false;
 	logWriter = new Logger(LOGGING_FILE_NAME);
 	masterInformation = Member();
-	tcpServent->repairReq = Messages(FILEDATA, "");
+	tcpServent->repairReq = Messages(FILEPUT, "");
 }
 
 void Node::computeAndPrintBandwidth(double diff)

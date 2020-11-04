@@ -54,9 +54,9 @@ void Node::readSdfsMessage(string m){
 			//either file is removed or theres now REP copies
 			tuple<int, set<tuple<string, string, string>>> val = replicas_list[msg.payload];
 			if (get<0>(val) == 0 || (get<1>(val)).size() >= REP) return;
-			if (tcpServent->repairReq.payload.size()) return; //repair thread busy
-			string s = msg.payload + "," + msg.payload;
-			tcpServent->repairReq = Messages(FILEDATA, s);
+			if (tcpServent->repairReq.payload.size() > 0) return; //repair thread busy
+			string s(msg.payload);
+			tcpServent->repairReq = Messages(FILEPUT, s);
             pthread_create(thread_arr + 7, NULL, runRepairThread, (void *)this);
 			break;
         }
@@ -197,14 +197,14 @@ void Node::mergeFileSystem(string m){
 
 void Node::handlePut(string s1, string s2){
 	string fileinfo = s1 + "," + s2;
-	tcpServent->outgoingReq = Messages(FILEDATA, fileinfo);
+	tcpServent->outgoingReq = Messages(FILEPUT, fileinfo);
 	threadConsistency();
 }
 
 void Node::handleGet(string s1, string s2){
 	tcpServent->request_targets.clear();
 	string fileinfo = s1 + "," + s2;
-	tcpServent->outgoingReq = Messages(FILEDATA, fileinfo);
+	tcpServent->outgoingReq = Messages(FILEGET, fileinfo); //was FILEDATA but seems wrong
 	void * t = (void * )calloc(1, sizeof(int*));
 	t = 0;
 	while (!t){
