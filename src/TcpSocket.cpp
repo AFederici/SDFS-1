@@ -322,17 +322,15 @@ void TcpSocket::runServer(){
     	}
     	else{
     		clientsCount++;
-    		size_t j;
     		for (size_t i = 0; i < MAX_CLIENTS; i++){
     			if (clients[i] == -1) {
     				clients[i] = accept_fd;
-    				j = i;
 					int result = 0;
 					pthread_mutex_lock(&id_mutex);
-    				result = pthread_create(tids + j, NULL, processTcpRequests, (void *)this);
-					if (!result) { thread_to_ind[tids[j]] = j; }
+    				result = pthread_create(tids + i, NULL, processTcpRequests, (void *)this);
+					if (result == 0) { thread_to_ind[tids[i]] = i; }
 					pthread_mutex_unlock(&id_mutex);
-					if (result) break;
+					if (result == 0) break;
     			}
     		}
     	}
