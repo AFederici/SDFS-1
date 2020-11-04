@@ -132,22 +132,19 @@ int TcpSocket::sendGetRequest(int fd, string filename, string local_file){
 }
 
 int TcpSocket::sendPutRequest(int fd, string local, string target, int node_initiated){
-	char * buffer = (char*)calloc(1,MAXBUFLEN);
+	char * buffer = (char*)calloc(1,MAXBUFLEN+1);
 	int fileBytes = 0;
 	if (node_initiated) local = dir->get_path(local);
 	if (sendMessage(fd, FILEPUT, target.c_str())) return -1;
-	if (sendFile(fd, local, target)) return -1;;
-	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){
-		perror("write_server_put: read");
-		return -1;
-	}
+	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){ perror("write_server_put: read"); return -1; }
 	buffer[fileBytes] = '\0';
 	Messages msg = Messages(buffer);
-	if (strcmp(msg.payload.c_str(), OK)){
-		perror("write_server_put: read");
-		free(buffer);
-		return -2;
-	}
+	if (strcmp(msg.payload.c_str(), OK)){ perror("write_server_put: read"); free(buffer); return -2; }
+	if (sendFile(fd, local, target)) return -1;
+	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){ perror("write_server_put: read"); return -1; }
+	buffer[fileBytes] = '\0';
+	msg = Messages(buffer);
+	if (strcmp(msg.payload.c_str(), OK)){ perror("write_server_put: read"); free(buffer); return -2; }
 	free(buffer);
 	cout << " PUT SENT " << target << endl;
 	return 0;
@@ -173,9 +170,9 @@ int TcpSocket::sendOK(int fd){
 }
 
 int TcpSocket::receiveMessage(int fd){
-	char * buffer = (char*)malloc(MAXBUFLEN);
+	char * buffer = (char*)malloc(MAXBUFLEN+1);
 	int numBytes = 0;
-	if ((numBytes = read(fd, buffer, MAXBUFLEN-1)) <= 0){
+	if ((numBytes = read(fd, buffer, MAXBUFLEN)) <= 0){
         perror("receiveMessage: read");
 		free(buffer);
         return -1;
@@ -184,8 +181,8 @@ int TcpSocket::receiveMessage(int fd){
 	string str(buffer);
     Messages msg = Messages(str);
 	cout << " RECEIVED REQUEST " << messageTypes[msg.type] << endl;
-	fflush(stdout);
 	if (msg.type == FILEPUT){
+		sendOK(fd);
 		if (receivePutRequest(fd, msg.payload) == 0) sendOK(fd);
 	}
 	else if (msg.type == FILEDEL){
@@ -208,14 +205,14 @@ int TcpSocket::receiveMessage(int fd){
 int TcpSocket::sendFile(int fd, string filename, string target){
 	FILE * fr = fopen(filename.c_str(), "r");
 	target = (target.size()) ? target : OK;
-	char * buffer = (char*) calloc(1, MAXBUFLEN);
+	char * buffer = (char*) calloc(1, MAXBUFLEN+1);
 	if (!fr){
 		fprintf(stderr, "can't open file %s\n", filename.c_str());
 		free(buffer);
 		return -1;
 	}
 	while (!feof(fr)){
-		size_t partialR = fread(buffer, 1, MAXBUFLEN-1, fr);
+		size_t partialR = fread(buffer, 1, MAXBUFLEN, fr);
 		if (!partialR) break;
 		if (partialR == -1){
 			perror("file read failed");
@@ -246,8 +243,8 @@ int TcpSocket::receiveFile(int fd, string local_file){
 	int numBytes = 0;
 	string tmp = tmpnam (NULL);
 	FILE * f = fopen(tmp.c_str(), "w+");
-	char * buffer = (char*)malloc(MAXBUFLEN);
-	while (((numBytes = read(fd, buffer, MAXBUFLEN-1)) > 0)){
+	char * buffer = (char*)malloc(MAXBUFLEN+1);
+	while (((numBytes = read(fd, buffer, MAXBUFLEN)) > 0)){
 		cout << "BYTES: " << numBytes << endl;
 		buffer[numBytes] = '\0';
 		string str(buffer);

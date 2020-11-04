@@ -22,7 +22,7 @@ using std::string;
 using std::queue;
 using std::get;
 
-#define MAXBUFLEN 1024
+#define MAXBUFLEN 1023
 #define LOSS_RATE 0
 
 class UdpSocket {
