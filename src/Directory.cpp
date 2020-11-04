@@ -1,9 +1,7 @@
 #include "../inc/Directory.h"
 
 Directory::Directory(){
-    char path[6];
-    strcat(path,"XXXXXX");
-    dir = mkdtemp(path);
+    if (mkdir("sdfs", 0777) == -1) { perror("bad dir"); exit(1);}
 }
 
 void Directory::store(){
@@ -31,9 +29,8 @@ int Directory::write_file(FILE * f, char * buf, uint size){
 }
 
 string Directory::get_path(string filename){
-    ostringstream stringStream;
-    stringStream << dir << "/" << filename;
-    return stringStream.str();
+    string s = "sdfs/" + filename;
+    return s;
 }
 
 void Directory::remove_file(string filename){

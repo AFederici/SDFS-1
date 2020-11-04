@@ -7,6 +7,9 @@
 #include <map>
 #include <utility>
 #include <sstream>
+#include <iostream>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
