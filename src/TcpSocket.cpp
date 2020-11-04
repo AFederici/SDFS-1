@@ -155,8 +155,8 @@ int TcpSocket::sendPutRequest(int fd, string local, string target, int node_init
 int TcpSocket::sendMessage(int fd, MessageType mt, const char * buffer){
     int numBytes = 0;
 	string str(buffer);
-    Messages msg = Messages(mt, str).toString();
-    if ((numBytes = send(fd, msg.toString().c_str(), msg.toString().size(), 0)) == -1) {
+    string msg = Messages(mt, str).toString();
+    if ((numBytes = send(fd, msg.c_str(), msg.size(), 0)) == -1) {
         perror("sendOK: send");
         return -1;
     }
@@ -171,15 +171,16 @@ int TcpSocket::sendOK(int fd){
 }
 
 int TcpSocket::receiveMessage(int fd){
-	char * buffer = (char*)calloc(1,MAXBUFLEN);
-	ssize_t received = 0;
-	if ((received = read(fd, buffer, MAXBUFLEN)) <= 0){
+	void * buffer = malloc(MAXBUFLEN);
+	int numBytes = 0;
+	if ((numBytes = read(fd, buffer, MAXBUFLEN-1)) <= 0){
         perror("receiveMessage: read");
 		free(buffer);
         return -1;
     }
-	buffer[received] = '\0';
-	string str(buffer, buffer + received + 1);
+	cout << "BYTES: " << numBytes << endl;
+	buffer[numBytes] = '\0';
+	string str(buffer);
     Messages msg = Messages(str);
 	cout << " RECEIVED REQUEST " << msg.type << endl;
 	fflush(stdout);
@@ -244,10 +245,11 @@ int TcpSocket::receiveFile(int fd, string local_file){
 	int numBytes = 0;
 	string tmp = tmpnam (NULL);
 	FILE * f = fopen(tmp.c_str(), "w+");
-	char * buffer = (char*)calloc(1,MAXBUFLEN);
-	while (((numBytes = read(fd, buffer, MAXBUFLEN)) > 0)){
+	void * buffer = malloc(MAXBUFLEN);
+	while (((numBytes = read(fd, buffer, MAXBUFLEN-1)) > 0)){
+		cout << "BYTES: " << numBytes << endl;
 		buffer[numBytes] = '\0';
-		string str(buffer, buffer + numBytes + 1);
+		string str(buffer);
 		Messages msg = Messages(str);
 		if (msg.type == FILEEND){
 			local_file = (local_file.size()) ? local_file : msg.payload;
