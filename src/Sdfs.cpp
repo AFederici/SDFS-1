@@ -149,6 +149,8 @@ void Node::threadConsistency(){
 		while ((index < numTargets) && (attempts < (REP - sent.size()))){
 			while ((index < numTargets) && sent.count(tcpServent->request_targets[index])) index++;
 			if (index < numTargets){
+				auto el = tcpServent->request_targets[index];
+				cout << "(" << get<0>(el) << "," << get<1>(el) << "," << get<2>(el) << ")" << endl;
 				pthread_mutex_lock(&id_mutex);
 				if (pthread_create(&thread_arr[3+attempts], NULL, runTcpClient, (void *)tcpServent)) {
 					cout << "Error:unable to create thread," << endl; pthread_mutex_unlock(&id_mutex); exit(-1);
