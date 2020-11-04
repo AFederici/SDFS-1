@@ -156,7 +156,7 @@ int TcpSocket::sendMessage(int fd, MessageType mt, const char * buffer){
     int numBytes = 0;
 	string str(buffer);
     string msg = Messages(mt, str).toString();
-	cout << "SENDMESSAGE " << msg << endl;
+	cout << "SENDMESSAGE " << msg.substr(0,1) << " - " << messageTypes[stoi(msg.substr(0,1))] << endl;
     if ((numBytes = send(fd, msg.c_str(), msg.size(), 0)) == -1) {
         perror("sendOK: send");
         return -1;
