@@ -179,9 +179,10 @@ int TcpSocket::receiveMessage(int fd){
 		free(buffer);
         return -1;
     }
-	cout << "BYTES: " << numBytes << endl;
+	cout << "BYTES: " << numBytes << " ";
 	buffer[numBytes] = '\0';
 	string str(buffer);
+	cout << "RESULT " << str.substr(0,2) << endl;
     Messages msg = Messages(str);
 	cout << " RECEIVED REQUEST " << msg.type << endl;
 	fflush(stdout);
