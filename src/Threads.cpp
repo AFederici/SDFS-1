@@ -28,6 +28,7 @@ void *runRepairThread(void* node){
 }
 
 void *processTcpRequests(void *tcpSocket) {
+	cout << "PROCESSING TCP REQ" << endl;
 	pthread_detach(pthread_self());
 	TcpSocket* tcp = (TcpSocket*) tcpSocket;
 	pthread_mutex_lock(&id_mutex);
