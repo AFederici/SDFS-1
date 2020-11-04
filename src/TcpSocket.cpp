@@ -171,7 +171,7 @@ int TcpSocket::sendOK(int fd){
 }
 
 int TcpSocket::receiveMessage(int fd){
-	void * buffer = malloc(MAXBUFLEN);
+	char * buffer = (char*)malloc(MAXBUFLEN);
 	int numBytes = 0;
 	if ((numBytes = read(fd, buffer, MAXBUFLEN-1)) <= 0){
         perror("receiveMessage: read");
@@ -245,7 +245,7 @@ int TcpSocket::receiveFile(int fd, string local_file){
 	int numBytes = 0;
 	string tmp = tmpnam (NULL);
 	FILE * f = fopen(tmp.c_str(), "w+");
-	void * buffer = malloc(MAXBUFLEN);
+	char * buffer = (char*)malloc(MAXBUFLEN);
 	while (((numBytes = read(fd, buffer, MAXBUFLEN-1)) > 0)){
 		cout << "BYTES: " << numBytes << endl;
 		buffer[numBytes] = '\0';
