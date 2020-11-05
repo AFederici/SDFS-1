@@ -56,7 +56,6 @@ int TcpSocket::receivePutRequest(int fd, string target){
 	int result = 0;
 	int status = 0;
 	bool cond = true;
-	//target is file end shit
 	get<0>(dir->file_heartbeats[target])++;
 	get<1>((dir->file_heartbeats[target])) = 1;
 	pthread_mutex_lock(&dir_mutex);
@@ -84,8 +83,7 @@ int TcpSocket::receivePutRequest(int fd, string target){
 	dir->file_status[target] = OPEN;
 	pthread_mutex_unlock(&dir_mutex);
 	if (status == -2) { cout << "MISSING FILE " << target << endl; fflush(stdout);}
-	cout << " PUT RECEIVED " << endl;
-	fflush(stdout);
+	cout << " PUT RECEIVED FOR " << target << endl;
 	return status;
 }
 
@@ -117,7 +115,7 @@ int TcpSocket::receiveGetRequest(int fd, string target){
 		if (!cond) dir->file_status[target] = READLOCK;
 		pthread_mutex_unlock(&dir_mutex);
 	}
-	cout << " GET RECEIVED " << target << endl;
+	cout << " GET RECEIVED FOR " << target << endl;
 	return sendFile(fd, dir->get_path(target), NULL);
 }
 
@@ -127,7 +125,7 @@ int TcpSocket::sendGetRequest(int fd, string filename, string local_file){
         perror("sendGet: send");
         return -1;
     }
-	cout << " GET SENT " << filename << endl;
+	cout << " GET SENT FOR " << filename << endl;
 	return receiveFile(fd, local_file);
 }
 
@@ -135,16 +133,20 @@ int TcpSocket::sendPutRequest(int fd, string local, string target, int node_init
 	char * buffer = (char*)calloc(1,MAXBUFLEN+1);
 	int fileBytes = 0;
 	if (node_initiated) local = dir->get_path(local);
+	cout << "SENDING PUT REQUEST " << endl;
 	if (sendMessage(fd, FILEPUT, target.c_str())) return -1;
-	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){ perror("write_server_put: read"); return -1; }
+	cout << "WAITING FOR PUT ACK " << endl;
+	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){ perror("sendPutRequest: wait for put ack"); return -1; }
 	buffer[fileBytes] = '\0';
 	Messages msg = Messages(buffer);
-	if (strcmp(msg.payload.c_str(), OK)){ perror("write_server_put: read"); free(buffer); return -2; }
+	if (strcmp(msg.payload.c_str(), OK)){ perror("sendPutRequest: NON OK RESP"); free(buffer); return -2; }
+	cout << "PUT ACK RECEIVED " << endl;
 	if (sendFile(fd, local, target)) return -1;
-	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){ perror("write_server_put: read"); return -1; }
+	cout << "FILE RECEIVED" << endl;
+	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){ perror("sendPutRequest: wait for put ack2"); return -1; }
 	buffer[fileBytes] = '\0';
 	msg = Messages(buffer);
-	if (strcmp(msg.payload.c_str(), OK)){ perror("write_server_put: read"); free(buffer); return -2; }
+	if (strcmp(msg.payload.c_str(), OK)){ perror("sendPutRequest: NON OK RESP2"); free(buffer); return -2; }
 	free(buffer);
 	cout << " PUT SENT " << target << endl;
 	return 0;
@@ -154,14 +156,15 @@ int TcpSocket::sendMessage(int fd, MessageType mt, const char * buffer){
     int numBytes = 0;
 	string str(buffer);
     string msg = Messages(mt, str).toString();
-	//cout << "SENDMESSAGE " << msg.substr(0,1) << " - " << messageTypes[stoi(msg.substr(0,1))] << endl;
     if ((numBytes = send(fd, msg.c_str(), msg.size(), 0)) == -1) {
-        perror("sendOK: send");
+		string s = "sendMessage: fail to send to fd " + to_string(fd) + " with type " + messageTypes[mt];
+        perror(s.c_str());
         return -1;
     }
-	pthread_mutex_lock(&gen_mutex);
+	pthread_mutex_lock(&traffic_mutex);
 	byteSent += numBytes;
-	pthread_mutex_unlock(&gen_mutex);
+	pthread_mutex_unlock(&traffic_mutex);
+	cout << numBytes << " were sent!" << endl;
     return 0;
 }
 
@@ -173,7 +176,8 @@ int TcpSocket::receiveMessage(int fd){
 	char * buffer = (char*)malloc(MAXBUFLEN+1);
 	int numBytes = 0;
 	if ((numBytes = read(fd, buffer, MAXBUFLEN)) <= 0){
-        perror("receiveMessage: read");
+		string s = "receiveMessage: message not read from fd " + to_string(fd);
+        perror(s.c_str());
 		free(buffer);
         return -1;
     }
@@ -182,8 +186,8 @@ int TcpSocket::receiveMessage(int fd){
     Messages msg = Messages(str);
 	cout << " RECEIVED REQUEST " << messageTypes[msg.type] << endl;
 	if (msg.type == FILEPUT){
-		sendOK(fd);
-		if (receivePutRequest(fd, msg.payload) == 0) sendOK(fd);
+		if (sendOK(fd) == 0) cout << "ACK PUT, READ TO RECEIVE" << endl;
+		if (receivePutRequest(fd, msg.payload) == 0) cout << "PUT COMPLETE, SENDING OK" << endl; sendOK(fd);
 	}
 	else if (msg.type == FILEDEL){
 		pthread_mutex_lock(&dir_mutex);
@@ -203,6 +207,8 @@ int TcpSocket::receiveMessage(int fd){
 }
 
 int TcpSocket::sendFile(int fd, string filename, string target){
+	int bytes = 0;
+	cout << "SENDING FILE " << filename << " to " << target << endl;
 	FILE * fr = fopen(filename.c_str(), "r");
 	target = (target.size()) ? target : OK;
 	char * buffer = (char*) calloc(1, MAXBUFLEN+1);
@@ -221,13 +227,11 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 		}
 		buffer[partialR] = '\0';
 		if (sendMessage(fd, FILEDATA, buffer)) {
-			perror("write_server_put: send");
+			perror("sendMessage: FILEDATA COULDNT BE SENT");
 			free(buffer);
 			return -1;
 		}
-		pthread_mutex_lock(&gen_mutex);
-		byteSent += partialR;
-		pthread_mutex_unlock(&gen_mutex);
+		bytes += partialR;
 	}
 	free(buffer);
 	if (sendMessage(fd, FILEEND, target.c_str())) {
@@ -235,37 +239,47 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 		return -1;
 	}
 	if (shutdown(serverSocket, SHUT_WR)) {perror("shutdown"); exit(1);}
-	fflush(stdout);
+	cout << to_string(bytes) << " bytes were sent from file " << filename;
+	pthread_mutex_lock(&traffic_mutex);
+	byteSent += bytes;
+	pthread_mutex_unlock(&traffic_mutex);
 	return 0;
 }
 
 int TcpSocket::receiveFile(int fd, string local_file){
+	int totalNumBytes = 0;
 	int numBytes = 0;
-	string tmp = tmpnam (NULL);
-	FILE * f = fopen(tmp.c_str(), "w+");
+	srand (time(NULL));
+  	int iSecret = rand() % 10000 + 1;
+	string tempFile = local_file + to_string(iSecret);
+	FILE * f = fopen(tempFile.c_str(), "w+");
 	char * buffer = (char*)malloc(MAXBUFLEN+1);
 	while (((numBytes = read(fd, buffer, MAXBUFLEN)) > 0)){
-		cout << "BYTES: " << numBytes << endl;
+		totalNumBytes += numBytes;
 		buffer[numBytes] = '\0';
 		string str(buffer);
 		Messages msg = Messages(str);
 		if (msg.type == FILEEND){
+			cout << "FILEEND WITH TOTAL " << to_string(totalNumBytes) << endl;
 			fclose(f);
 			remove(local_file.c_str());
-			rename(tmp.c_str(), local_file.c_str());
+			rename(tempFile.c_str(), local_file.c_str());
 			free(buffer);
-			return 0;
+			cout << "directory now cotains: " << endl;
+			dir->printer();
 		}
 		if (msg.type == MISSING){
 			fclose(f);
-			remove(tmp.c_str());
+			remove(tempFile.c_str());
 			free(buffer);
+			cout << "FILEMISSING " << local_file << endl;
 			return -2;
 		}
         if (dir->write_file(f, buffer + msg.fillerLength(), numBytes - msg.fillerLength())) break;
     }
+	cout << "SOMETHING WRONG IN SENDING??" << endl;
 	fclose(f);
-	remove(tmp.c_str());
+	remove(tempFile.c_str());
 	free(buffer);
 	return -1;
 }
@@ -322,15 +336,18 @@ void TcpSocket::runServer(){
     	}
     	else{
     		clientsCount++;
+			int id = new_thread_id();
     		for (size_t i = 0; i < MAX_CLIENTS; i++){
     			if (clients[i] == -1) {
     				clients[i] = accept_fd;
 					int result = 0;
-					pthread_mutex_lock(&id_mutex);
-    				result = pthread_create(tids + i, NULL, processTcpRequests, (void *)this);
-					if (result == 0) { thread_to_ind[tids[i]] = i; }
-					pthread_mutex_unlock(&id_mutex);
-					if (result == 0) break;
+					pthread_mutex_lock(&process_q_mutex);
+					tuple<int, int> process = make_tuple(id, i);
+					process_q.push(process);
+					pthread_mutex_unlock(&process_q_mutex);
+    				pthread_create(tids + i, NULL, processTcpRequests, (void *)this);
+					cout << "CLIENT # " << to_string(clientsCount) << " assigned to index " << to_string(i) << endl;
+					break;
     			}
     		}
     	}

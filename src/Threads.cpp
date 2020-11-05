@@ -2,6 +2,8 @@
 
 void *runUdpServer(void *udpSocket)
 {
+	int id = new_thread_id();
+	cout << "THREAD " << to_string(id) << "RUNNING UDP SERVER" << endl;
 	UdpSocket* udp;
 	udp = (UdpSocket*) udpSocket;
 	udp->bindServer();
@@ -10,6 +12,8 @@ void *runUdpServer(void *udpSocket)
 
 void *runTcpServer(void* tcpSocket)
 {
+	int id = new_thread_id();
+	cout << "THREAD " << to_string(id) << "RUNNING TCP SERVER" << endl;
 	TcpSocket * tcp = (TcpSocket *) tcpSocket;
 	tcp->setupServer();
 	tcp->runServer();
@@ -17,12 +21,13 @@ void *runTcpServer(void* tcpSocket)
 }
 
 void *runRepairThread(void* node){
+	int id = new_thread_id();
+	cout << "THREAD " << to_string(id) << "RUNNING REPAIR" << endl;
 	pthread_detach(pthread_self());
 	Node * n = (Node *) node;
-	auto targets = n->getTcpTargets();
+	auto targets = n->getTcpTargets(n->tcpServent->repairReq.payload);
 	int fd = n->tcpServent->outgoingConnection(get<0>(targets[0]), get<1>(targets[0]));
-	n->tcpServent->sendPutRequest(fd, n->tcpServent->repairReq.payload, n->tcpServent->repairReq.payload, 1); // needs one more arg
-	close(fd);
+	n->tcpServent->sendPutRequest(fd, n->tcpServent->repairReq.payload, n->tcpServent->repairReq.payload, 1);
 	n->tcpServent->repairReq = Messages(FILEPUT, "");
 	return NULL;
 }
@@ -30,16 +35,19 @@ void *runRepairThread(void* node){
 void *processTcpRequests(void *tcpSocket) {
 	pthread_detach(pthread_self());
 	TcpSocket* tcp = (TcpSocket*) tcpSocket;
-	pthread_mutex_lock(&id_mutex);
-	int id = tcp->thread_to_ind[pthread_self()];
-	cout << "processing TCP id " << id << endl;
-	pthread_mutex_unlock(&id_mutex);
-	tcp->receiveMessage(tcp->clients[id]);
-    close(tcp->clients[id]);
+	pthread_mutex_lock(&process_q_mutex);
+	tuple<int, int> process = tcp->process_q.front();
+	tcp->process_q.pop();
+	pthread_mutex_unlock(&process_q_mutex);
+	cout << "THREAD " << to_string(get<0>(process)) << "PROCESSING CLIENT # " << to_string(get<1>(process)) << endl;
+	tcp->receiveMessage(tcp->clients[get<1>(process)]);
+	cout << "MESSAGE RECEIVED" << endl;
+    close(tcp->clients[get<1>(process)]);
     pthread_mutex_lock(&clients_mutex);
-    tcp->clients[id] = -1;
+    tcp->clients[get<1>(process)] = -1;
     tcp->clientsCount--;
     pthread_mutex_unlock(&clients_mutex);
+	cout << "THREAD " << to_string(get<0>(process)) << "FINISHED. " << to_string(tcp->clientsCount) << " left on server."<< endl;
 	return NULL;
 }
 
@@ -47,13 +55,13 @@ void *processTcpRequests(void *tcpSocket) {
 void *runTcpClient(void* tcpSocket)
 {
 	TcpSocket * tcp = (TcpSocket *) tcpSocket;
-	pthread_mutex_lock(&id_mutex);
-	int id = tcp->thread_to_ind[pthread_self()];
-	cout << pthread_self() << "|" << tcp->thread_to_ind[pthread_self()] << endl;
-	fflush(stdout);
-	pthread_mutex_unlock(&id_mutex);
-	int fd = tcp->outgoingConnection(tcp->request_targets[id]);
-	char * buffer = (char*)calloc(1,MAXBUFLEN);
+	pthread_mutex_lock(&runner_q_mutex);
+	tuple<string, string, string, int> runner = tcp->runner_q.front();
+	tcp->runner_q.pop();
+	pthread_mutex_unlock(&runner_q_mutex);
+	int fd = tcp->outgoingConnection(make_tuple(get<0>(runner), get<1>(runner), get<2>(runner)));
+	cout << "THREAD " << to_string(get<3>(runner)) << " CONNECTED TO " << get<0>(runner) << " FOR " << messageTypes[tcp->outgoingReq.type] << endl;
+	char * buffer = (char*)calloc(1,MAXBUFLEN+1);
 	int fileBytes = 0;
 	if (tcp->outgoingReq.type == FILEDEL){
 		if (tcp->sendMessage(fd, FILEDEL, tcp->outgoingReq.payload.c_str())) free(buffer);close(fd);return (void*)0;
@@ -63,8 +71,8 @@ void *runTcpClient(void* tcpSocket)
 		buffer[fileBytes] = '\0';
 		Messages msg = Messages(buffer);
 		if (strcmp(msg.payload.c_str(), OK)){
-			cout << "DELETION FAILED " << " | " << get<0>(tcp->request_targets[id]) <<
-				"::" << get<1>(tcp->request_targets[id]) << " | " <<
+			cout << "DELETION FAILED " << " | " << get<0>(runner) <<
+				"::" << get<1>(runner) << " | " <<
 				tcp->outgoingReq.payload << " | " << msg.payload << endl;
 			free(buffer);close(fd);return (void*)0;
 		}

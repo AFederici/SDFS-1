@@ -17,9 +17,13 @@ using std::vector;
 using std::get;
 using std::tuple_element;
 
+static pthread_mutex_t thread_counter_lock = PTHREAD_MUTEX_INITIALIZER;
+static int thread_counter = 0;
+
 vector<string> splitString(string s, string delimiter);
 string getIP();
 string getIP(const char * host);
+int new_thread_id();
 
 //adapted from https://stackoverflow.com/questions/23030267/custom-sorting-a-vector-of-tuples
 template<int M, template<typename> class F = std::less>

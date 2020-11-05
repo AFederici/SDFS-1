@@ -24,22 +24,27 @@
 #include "Directory.h"
 #include "MessageTypes.h"
 #include "Messages.h"
+#include "Utils.h"
 #ifdef __linux__
 #include <bits/stdc++.h>
 #endif
 
 using std::string;
+using std::queue;
 using std::to_string;
 using std::map;
+using std::make_tuple;
 using std::get;
 
 #define MAXBUFLEN 1023
 #define MAX_CLIENTS 10
 static const char * OK = "OK\n";
 static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t gen_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t traffic_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t dir_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t id_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static pthread_mutex_t process_q_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t runner_q_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void closeFdAfterWrite(int fd);
 void closeFd(int fd);
@@ -50,10 +55,11 @@ public:
 	char* serverPort;
     int serverSocket;
 
-	vector<tuple<string, string, string>> request_targets;
+	queue<tuple<int,int>> process_q;
+	queue<tuple<string, string, string, int>> runner_q;
+
 	Messages outgoingReq;
 	Messages repairReq;
-	map<pthread_t, int> thread_to_ind;
 	unsigned long byteSent;
     Directory * dir;
 	volatile int clientsCount;

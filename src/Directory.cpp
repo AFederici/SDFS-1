@@ -12,12 +12,24 @@ void Directory::store(){
     }
 }
 
+void Directory::printer(){
+    DIR *dpdf;
+    struct dirent *epdf;
+    dpdf = opendir("../sdfs");
+    if (dpdf != NULL){
+       while (epdf = readdir(dpdf)){
+          printf("Filename: %s",epdf->d_name);
+       }
+    }
+    closedir(dpdf);
+}
+
 int Directory::write_file(FILE * f, char * buf, uint size){
 	size_t written = 0;
 	while (written < size){
 		int actuallyWritten = fwrite(buf + written, 1, size - written, f);
 		if (actuallyWritten <= 0){
-			fprintf(stderr, "coudln't write to local file\n");
+			cout << "coudln't write to local file" << endl;
         	return -1;
 		}
 		else written += actuallyWritten;
@@ -45,5 +57,5 @@ void Directory::remove_file(string filename){
 }
 
 void Directory::clear(){
-    remove(dir);
+    system("exec rm -r -f ../sdfs");
 }

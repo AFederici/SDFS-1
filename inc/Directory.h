@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <dirent.h>
 #include "Modes.h"
 #ifdef __linux__
 #include <bits/stdc++.h>
@@ -41,6 +42,7 @@ public:
 	void remove_file(string filename);
     string get_path(string filename);
 	void clear();
+	void printer();
 };
 
 #endif //DIRECTORY_H

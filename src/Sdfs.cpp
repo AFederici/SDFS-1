@@ -100,12 +100,13 @@ void Node::readSdfsMessage(string m){
 
 
 
-vector<tuple<string, string, string>> Node::getTcpTargets(){
+vector<tuple<string, string, string>> Node::getTcpTargets(string file){
 	vector<tuple<string, string, string, int>> v;
 	for(auto& element: membershipList){
 		tuple<string, string, string> keyPair = element.first;
 		if (get<0>(keyPair).compare(nodeInformation.ip)) continue;
 		//tcp targets use tcp port
+		if (get<1>(replicas_list[file]).count(keyPair)) continue;
 		v.push_back(make_tuple(get<0>(keyPair), TCP_PORT, get<2>(keyPair), get<0>(file_system[keyPair])));
 	}
 	std::sort(v.begin(), v.end(), TupleCompare<3>());
@@ -131,42 +132,37 @@ vector<tuple<string, string, string>> Node::getTcpTargets(){
 	return targets;
 }
 
-void Node::threadConsistency(){
-	set<tuple<string, string, string>> sent;
+void Node::threadConsistency(string file){
+	int completed_requests = 0;
+	vector<tuple<string,string,string>> request_targets;
 	void *t = (void*) calloc(1, sizeof(int*));
-	while (sent.size() < REP){
-		tcpServent->request_targets.clear();
-		if (tcpServent->outgoingReq.type == FILEDEL){
-			string s1 = tcpServent->outgoingReq.payload;
-			copy(get<1>(replicas_list[s1]).begin(), get<1>(replicas_list[s1]).end(), back_inserter(tcpServent->request_targets));
-		} else{
-			auto targ = getTcpTargets();
-			copy(targ.begin(), targ.end(), back_inserter(tcpServent->request_targets));
-		}
-		int numTargets = tcpServent->request_targets.size();
+	while (completed_requests < REP){
+		pthread_mutex_lock(&runner_q_mutex);
+		queue<tuple<string, string, string, int>> empty;
+   		std::swap( tcpServent->runner_q, empty );
+		pthread_mutex_unlock(&runner_q_mutex);
+		auto target_set = get<1>(replicas_list[file]);
+		if (tcpServent->outgoingReq.type == FILEDEL) request_targets.assign(target_set.begin(), target_set.end());
+		else request_targets = getTcpTargets(file);
+		int numTargets = request_targets.size();
 		int attempts = 0;
 		int index = 0;
-		while ((index < numTargets) && (attempts < (REP - sent.size()))){
-			while ((index < numTargets) && sent.count(tcpServent->request_targets[index])) index++;
-			if (index < numTargets){
-				auto el = tcpServent->request_targets[index];
-				cout << "(" << get<0>(el) << "," << get<1>(el) << "," << get<2>(el) << ")" << endl;
-				pthread_mutex_lock(&id_mutex);
-				if (pthread_create(&thread_arr[3+attempts], NULL, runTcpClient, (void *)tcpServent)) {
-					cout << "Error:unable to create thread," << endl; pthread_mutex_unlock(&id_mutex); exit(-1);
-				}
-				tcpServent->thread_to_ind[thread_arr[3+attempts]] = index;
-				attempts++;
-				index++;
-				pthread_mutex_unlock(&id_mutex);
+		while ((index < numTargets) && (attempts < (REP - completed_requests))){
+			int id = new_thread_id();
+			pthread_mutex_lock(&runner_q_mutex);
+			tuple<string, string, string, int> el = make_tuple(get<0>(request_targets[index]), get<1>(request_targets[index]),get<2>(request_targets[index]),id);
+			tcpServent->runner_q.push(el);
+			pthread_mutex_unlock(&runner_q_mutex);
+			if (pthread_create(&thread_arr[3+attempts], NULL, runTcpClient, (void *)tcpServent)) {
+				cout << "Error:unable to create thread," << endl; exit(-1);
 			}
+			attempts++;
+			index++;
 		}
 		for (int i = 0; i < attempts; i++){
 			t = 0;
 			pthread_join(thread_arr[3+i], &t);
-			pthread_mutex_lock(&id_mutex);
-			if (t) sent.insert(tcpServent->request_targets[tcpServent->thread_to_ind[thread_arr[3+i]]]);
-			pthread_mutex_unlock(&id_mutex);
+			if (t) completed_requests++;
 		}
 	}
 	free(t);
@@ -198,11 +194,10 @@ void Node::mergeFileSystem(string m){
 void Node::handlePut(string s1, string s2){
 	string fileinfo = s1 + "," + s2;
 	tcpServent->outgoingReq = Messages(FILEPUT, fileinfo);
-	threadConsistency();
+	threadConsistency(s2);
 }
 
 void Node::handleGet(string s1, string s2){
-	tcpServent->request_targets.clear();
 	string fileinfo = s1 + "," + s2;
 	tcpServent->outgoingReq = Messages(FILEGET, fileinfo); //was FILEDATA but seems wrong
 	void * t = (void * )calloc(1, sizeof(int*));
@@ -214,13 +209,13 @@ void Node::handleGet(string s1, string s2){
 			return;
 		}
 		for (auto &el : get<1>(replicas_list[s1])){
-			tcpServent->request_targets.push_back(el);
-			pthread_mutex_lock(&id_mutex);
+			int id = new_thread_id();
+			pthread_mutex_lock(&runner_q_mutex);
+			tcpServent->runner_q.push(make_tuple(get<0>(el), get<1>(el), get<2>(el), id));
+			pthread_mutex_unlock(&runner_q_mutex);
 			if (pthread_create(&thread_arr[3], NULL, runTcpClient, (void *)tcpServent)) {
-				cout << "Error:unable to create thread," << endl; pthread_mutex_unlock(&id_mutex); exit(-1);
+				cout << "Error:unable to create thread," << endl; exit(-1);
 			}
-			tcpServent->thread_to_ind[thread_arr[3]] = tcpServent->request_targets.size()-1;
-			pthread_mutex_unlock(&id_mutex);
 			pthread_join(thread_arr[3], &t);
 			if (t) free(t); return;
 		}
@@ -229,5 +224,5 @@ void Node::handleGet(string s1, string s2){
 
 void Node::handleDelete(string s1){
 	tcpServent->outgoingReq = Messages(FILEDEL, s1);
-	threadConsistency();
+	threadConsistency(s1);
 }

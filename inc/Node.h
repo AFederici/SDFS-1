@@ -96,7 +96,7 @@ public:
 	void handleGet(string s1, string s2);
 	void readSdfsMessage(string m);
 	void handleDelete(string s1);
-	vector<tuple<string, string, string>> getTcpTargets();
+	vector<tuple<string, string, string>> getTcpTargets(string s1);
 
 private:
 	string populateMembershipMessage();
@@ -106,7 +106,7 @@ private:
 	void processHeartbeat(string message);
 	vector<tuple<string,string, string>> getRandomNodesToGossipTo();
 
-	void threadConsistency();
+	void threadConsistency(string s1);
 	void mergeFileSystem(string m);
 };
 
