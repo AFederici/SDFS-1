@@ -1,6 +1,7 @@
 #include "../inc/Directory.h"
 
 Directory::Directory(){
+    clear();
     if (mkdir("sdfs", 0777) == -1) { perror("bad dir"); exit(1);}
 }
 

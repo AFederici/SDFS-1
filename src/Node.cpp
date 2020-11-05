@@ -1,5 +1,6 @@
 #include "../inc/Node.h"
 #include "../inc/Utils.h"
+//TODO - on exit cleanup directory
 
 Node::Node() : Node(ALL2ALL) {}
 
