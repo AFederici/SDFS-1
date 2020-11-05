@@ -78,7 +78,7 @@ int TcpSocket::receivePutRequest(int fd, string target){
 		dir->file_status[target] = WRITELOCK;
 		pthread_mutex_unlock(&dir_mutex);
 	}
-	status = receiveFile(fd, dir->get_path(target));
+	status = receiveFile(fd, target, 1);
 	pthread_mutex_lock(&dir_mutex);
 	dir->file_status[target] = OPEN;
 	pthread_mutex_unlock(&dir_mutex);
@@ -126,7 +126,7 @@ int TcpSocket::sendGetRequest(int fd, string filename, string local_file){
         return -1;
     }
 	cout << " GET SENT FOR " << filename << endl;
-	return receiveFile(fd, local_file);
+	return receiveFile(fd, local_file, 0);
 }
 
 int TcpSocket::sendPutRequest(int fd, string local, string target, int node_initiated){
@@ -142,13 +142,13 @@ int TcpSocket::sendPutRequest(int fd, string local, string target, int node_init
 	if (strcmp(msg.payload.c_str(), OK)){ perror("sendPutRequest: NON OK RESP"); free(buffer); return -2; }
 	cout << "PUT ACK RECEIVED " << endl;
 	if (sendFile(fd, local, target)) return -1;
-	cout << "FILE RECEIVED" << endl;
+	cout << "FILE SENT SUCCESSFULLY" << endl;
 	if ((fileBytes = read(fd, buffer, MAXBUFLEN)) == -1){ perror("sendPutRequest: wait for put ack2"); return -1; }
 	buffer[fileBytes] = '\0';
 	msg = Messages(buffer);
 	if (strcmp(msg.payload.c_str(), OK)){ perror("sendPutRequest: NON OK RESP2"); free(buffer); return -2; }
 	free(buffer);
-	cout << " PUT SENT " << target << endl;
+	cout << " PUT COMPLETE FOR " << target << endl;
 	return 0;
 }
 
@@ -164,7 +164,7 @@ int TcpSocket::sendMessage(int fd, MessageType mt, const char * buffer){
 	pthread_mutex_lock(&traffic_mutex);
 	byteSent += numBytes;
 	pthread_mutex_unlock(&traffic_mutex);
-	cout << numBytes << " were sent!" << endl;
+	//cout << numBytes << " were sent!" << endl;
     return 0;
 }
 
@@ -186,7 +186,7 @@ int TcpSocket::receiveMessage(int fd){
     Messages msg = Messages(str);
 	cout << " RECEIVED REQUEST " << messageTypes[msg.type] << endl;
 	if (msg.type == FILEPUT){
-		if (sendOK(fd) == 0) cout << "ACK PUT, READ TO RECEIVE" << endl;
+		if (sendOK(fd) == 0) cout << "ACK PUT, READy TO RECEIVE" << endl;
 		if (receivePutRequest(fd, msg.payload) == 0) cout << "PUT COMPLETE, SENDING OK" << endl; sendOK(fd);
 	}
 	else if (msg.type == FILEDEL){
@@ -234,6 +234,7 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 		bytes += partialR;
 	}
 	free(buffer);
+	cout << "FILEEND MATCHING = " << target << endl;
 	if (sendMessage(fd, FILEEND, target.c_str())) {
 		perror("write_server_put: send");
 		return -1;
@@ -246,40 +247,54 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 	return 0;
 }
 
-int TcpSocket::receiveFile(int fd, string local_file){
+int TcpSocket::receiveFile(int fd, string file, int isCloud){
 	int totalNumBytes = 0;
 	int numBytes = 0;
-	srand (time(NULL));
-  	int iSecret = rand() % 10000 + 1;
-	string tempFile = local_file + to_string(iSecret);
-	FILE * f = fopen(tempFile.c_str(), "w+");
+	FILE * f;
+	string tempFile;
+	if (isCloud){
+		srand (time(NULL));
+	  	int iSecret = rand() % 10000 + 1;
+		string tempFile = file + to_string(iSecret);
+		f = fopen(dir->get_path(tempFile).c_str(), "w+");
+		cout << "PUTTING FILE AT - " << dir->get_path(tempFile) << " - then - " <<  dir->get_path(file) << endl;
+	}
+	else { f = fopen(file.c_str(), "w+"); cout << "PUTTING FILE AT - " << file << endl; }
 	char * buffer = (char*)malloc(MAXBUFLEN+1);
-	while (((numBytes = read(fd, buffer, MAXBUFLEN)) > 0)){
+	while ((numBytes = read(fd, buffer, MAXBUFLEN))){
 		totalNumBytes += numBytes;
 		buffer[numBytes] = '\0';
 		string str(buffer);
 		Messages msg = Messages(str);
-		if (msg.type == FILEEND){
+		if (msg.type == FILEEND && (msg.payload.compare(file) == 0)){
 			cout << "FILEEND WITH TOTAL " << to_string(totalNumBytes) << endl;
 			fclose(f);
-			remove(local_file.c_str());
-			rename(tempFile.c_str(), local_file.c_str());
+			if (isCloud){
+				remove(dir->get_path(file).c_str());
+				rename(dir->get_path(tempFile).c_str(), dir->get_path(file).c_str());
+				cout << "directory now cotains: " << endl;
+				dir->printer();
+			}
 			free(buffer);
-			cout << "directory now cotains: " << endl;
-			dir->printer();
+			return 0;
+		}
+		if (msg.type == FILEEND && msg.payload.compare(file)){
+			cout << "FILEEND FOUND WITH PAYLOAD " << msg.payload << endl;
+			cout << "FILENED EXPECTED " << file << endl;
 		}
 		if (msg.type == MISSING){
 			fclose(f);
-			remove(tempFile.c_str());
+			if (isCloud) remove(dir->get_path(tempFile).c_str());
+			else remove(file.c_str());
 			free(buffer);
-			cout << "FILEMISSING " << local_file << endl;
+			cout << "FILEMISSING " << file << endl;
 			return -2;
 		}
-        if (dir->write_file(f, buffer + msg.fillerLength(), numBytes - msg.fillerLength())) break;
+        dir->write_file(f, buffer + msg.fillerLength(), numBytes - msg.fillerLength());
     }
 	cout << "SOMETHING WRONG IN SENDING??" << endl;
 	fclose(f);
-	remove(tempFile.c_str());
+	if (isCloud) remove(tempFile.c_str());
 	free(buffer);
 	return -1;
 }
@@ -346,7 +361,7 @@ void TcpSocket::runServer(){
 					process_q.push(process);
 					pthread_mutex_unlock(&process_q_mutex);
     				pthread_create(tids + i, NULL, processTcpRequests, (void *)this);
-					cout << "CLIENT # " << to_string(clientsCount) << " assigned to index " << to_string(i) << endl;
+					cout << "Total clients: " << to_string(clientsCount) << endl;
 					break;
     			}
     		}

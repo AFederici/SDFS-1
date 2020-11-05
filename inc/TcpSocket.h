@@ -77,7 +77,7 @@ public:
 	int sendOK(int fd);
 	int receiveMessage(int fd);
 	int sendFile(int fd, string filename, string target);
-	int receiveFile(int fd, string local_file);
+	int receiveFile(int fd, string local_file, int isCloud);
 	void cleanup();
 	void setupServer();
 	void runServer();
