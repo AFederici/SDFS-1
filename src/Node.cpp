@@ -594,6 +594,7 @@ int main(int argc, char **argv)
 
 			}
 		}
+		sleep(1);
 	}
 	pthread_kill(node->thread_arr[0], SIGUSR1);
 	pthread_kill(node->thread_arr[1], SIGUSR1);

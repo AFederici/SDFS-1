@@ -33,13 +33,13 @@ using namespace std;
 #define LOGGING_FILE_NAME "logs.txt"
 
 // --- parameters (stay tuned) ---
-#define T_period 500000 // in microseconds
-#define T_timeout 3 // in T_period
-#define T_cleanup 3 // in T_period
-#define N_b 3 // how many nodes GOSSIP want to use
+#define T_period 1000000 // in microseconds
+#define T_timeout 6 // in T_period
+#define T_cleanup 6 // in T_period
+#define N_b 4 // how many nodes GOSSIP want to use
 // ------
 
-#define T_switch 3 // in seconds
+#define T_switch 6 // in seconds
 
 static pthread_mutex_t repair_mutex = PTHREAD_MUTEX_INITIALIZER;
 
