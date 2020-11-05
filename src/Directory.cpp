@@ -58,5 +58,5 @@ void Directory::remove_file(string filename){
 }
 
 void Directory::clear(){
-    system("exec rm -r -f ../sdfs");
+    system("exec rm -r -f ./sdfs");
 }
