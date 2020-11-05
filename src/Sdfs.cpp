@@ -104,7 +104,6 @@ vector<tuple<string, string, string>> Node::getTcpTargets(string file){
 	vector<tuple<string, string, string, int>> v;
 	for(auto& element: membershipList){
 		tuple<string, string, string> keyPair = element.first;
-		if (get<0>(keyPair).compare(nodeInformation.ip)) continue;
 		//tcp targets use tcp port
 		v.push_back(make_tuple(get<0>(keyPair), TCP_PORT, get<2>(keyPair), get<0>(file_system[keyPair])));
 	}
@@ -147,6 +146,7 @@ void Node::threadConsistency(string file){
 		int attempts = 0;
 		int index = 0;
 		while ((index < numTargets) && (attempts < (REP - completed_requests))){
+			cout << "attempt target " << get<0>(request_targets[index]) << endl;
 			if (get<0>(request_targets[index]).compare(nodeInformation.ip) == 0) {handleLocalReq(); completed_requests++;}
 			else{
 				int id = new_thread_id();

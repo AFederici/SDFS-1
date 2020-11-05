@@ -25,8 +25,13 @@ void *runRepairThread(void* node){
 	cout << "THREAD " << to_string(id) << "RUNNING REPAIR" << endl;
 	pthread_detach(pthread_self());
 	Node * n = (Node *) node;
+    int fd;
 	auto targets = n->getTcpTargets(n->tcpServent->repairReq.payload);
-	int fd = n->tcpServent->outgoingConnection(get<0>(targets[0]), get<1>(targets[0]));
+    if (get<0>(targets[0]).compare(n->nodeInformation.ip) == 0){
+        if (targets.size() == 1) return NULL;
+        fd = n->tcpServent->outgoingConnection(get<0>(targets[1]), get<1>(targets[1]));
+    }
+	else fd = n->tcpServent->outgoingConnection(get<0>(targets[0]), get<1>(targets[0]));
 	n->tcpServent->sendPutRequest(fd, n->tcpServent->repairReq.payload, n->tcpServent->repairReq.payload, 1);
 	n->tcpServent->repairReq = Messages(FILEPUT, "");
 	return NULL;
