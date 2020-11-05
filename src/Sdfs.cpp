@@ -147,7 +147,7 @@ void Node::threadConsistency(string file){
 		int attempts = 0;
 		int index = 0;
 		while ((index < numTargets) && (attempts < (REP - completed_requests))){
-			if (get<0>(request_targets[index]).compare(nodeInformation.ip) == 0) handleLocalReq();
+			if (get<0>(request_targets[index]).compare(nodeInformation.ip) == 0) {handleLocalReq(); completed_requests++;}
 			else{
 				int id = new_thread_id();
 				tuple<string, string, string, int> el = make_tuple(get<0>(request_targets[index]), get<1>(request_targets[index]),get<2>(request_targets[index]),id);
@@ -157,8 +157,8 @@ void Node::threadConsistency(string file){
 				if (pthread_create(&thread_arr[3+attempts], NULL, runTcpClient, (void *)tcpServent)) {
 					cout << "Error:unable to create thread," << endl; exit(-1);
 				}
+				attempts++;
 			}
-			attempts++;
 			index++;
 		}
 		for (int i = 0; i < attempts; i++){
