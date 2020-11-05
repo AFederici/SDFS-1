@@ -177,6 +177,7 @@ void Node::handleLocalReq(){
 		tcpServent->dir->file_status.erase(tcpServent->dir->file_status.find(tcpServent->outgoingReq.payload));
 		pthread_mutex_unlock(&dir_mutex);
 	} else{ //PUT
+		cout << "LOCAL PUT " << files[0] << " -> " tcpServent->dir->get_path(files[1]) << endl;
 		vector<string> files = splitString(tcpServent->outgoingReq.payload, ",");
 		std::ifstream  src(files[0], std::ios::binary);
 		std::ofstream  dst(tcpServent->dir->get_path(files[1]), std::ios::binary);
