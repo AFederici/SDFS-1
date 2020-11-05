@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <fstream>
 #include <utility>
 #include <stdlib.h>
 #include <pthread.h>
@@ -89,6 +90,7 @@ public:
 	int SwitchMyMode();
 	void debugMembershipList();
 	void masterDetection();
+	void handleLocalReq();
 	void orderReplication(); //for master
 	void updateDirIntoFileSystem();
 	// switched to public functions

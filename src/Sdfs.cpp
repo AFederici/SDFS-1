@@ -106,7 +106,6 @@ vector<tuple<string, string, string>> Node::getTcpTargets(string file){
 		tuple<string, string, string> keyPair = element.first;
 		if (get<0>(keyPair).compare(nodeInformation.ip)) continue;
 		//tcp targets use tcp port
-		if (get<1>(replicas_list[file]).count(keyPair)) continue;
 		v.push_back(make_tuple(get<0>(keyPair), TCP_PORT, get<2>(keyPair), get<0>(file_system[keyPair])));
 	}
 	std::sort(v.begin(), v.end(), TupleCompare<3>());
@@ -148,13 +147,16 @@ void Node::threadConsistency(string file){
 		int attempts = 0;
 		int index = 0;
 		while ((index < numTargets) && (attempts < (REP - completed_requests))){
-			int id = new_thread_id();
-			pthread_mutex_lock(&runner_q_mutex);
-			tuple<string, string, string, int> el = make_tuple(get<0>(request_targets[index]), get<1>(request_targets[index]),get<2>(request_targets[index]),id);
-			tcpServent->runner_q.push(el);
-			pthread_mutex_unlock(&runner_q_mutex);
-			if (pthread_create(&thread_arr[3+attempts], NULL, runTcpClient, (void *)tcpServent)) {
-				cout << "Error:unable to create thread," << endl; exit(-1);
+			if (get<0>(request_targets[index]).compare(nodeInformation.ip) == 0) handleLocalReq();
+			else{
+				int id = new_thread_id();
+				tuple<string, string, string, int> el = make_tuple(get<0>(request_targets[index]), get<1>(request_targets[index]),get<2>(request_targets[index]),id);
+				pthread_mutex_lock(&runner_q_mutex);
+				tcpServent->runner_q.push(el);
+				pthread_mutex_unlock(&runner_q_mutex);
+				if (pthread_create(&thread_arr[3+attempts], NULL, runTcpClient, (void *)tcpServent)) {
+					cout << "Error:unable to create thread," << endl; exit(-1);
+				}
 			}
 			attempts++;
 			index++;
@@ -166,6 +168,20 @@ void Node::threadConsistency(string file){
 		}
 	}
 	free(t);
+}
+
+void Node::handleLocalReq(){
+	if (tcpServent->outgoingReq.type == FILEDEL){
+		pthread_mutex_lock(&dir_mutex);
+		tcpServent->dir->remove_file(tcpServent->outgoingReq.payload);
+		tcpServent->dir->file_status.erase(tcpServent->dir->file_status.find(tcpServent->outgoingReq.payload));
+		pthread_mutex_unlock(&dir_mutex);
+	} else{ //PUT
+		vector<string> files = splitString(tcpServent->outgoingReq.payload, ",");
+		std::ifstream  src(files[0], std::ios::binary);
+		std::ofstream  dst(tcpServent->dir->get_path(files[1]), std::ios::binary);
+		dst << src.rdbuf();
+	}
 }
 
 void Node::mergeFileSystem(string m){
@@ -209,6 +225,7 @@ void Node::handleGet(string s1, string s2){
 			return;
 		}
 		for (auto &el : get<1>(replicas_list[s1])){
+			if (get<0>(el).compare(nodeInformation.ip) == 0) continue;
 			int id = new_thread_id();
 			pthread_mutex_lock(&runner_q_mutex);
 			tcpServent->runner_q.push(make_tuple(get<0>(el), get<1>(el), get<2>(el), id));

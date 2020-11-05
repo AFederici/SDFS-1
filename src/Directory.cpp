@@ -1,5 +1,7 @@
 #include "../inc/Directory.h"
 
+//TODO - handle overwrites, if put request on an existing file, should find those machines and send to them?
+//or, use a versioning system maybe and keep a dic for most recent.
 Directory::Directory(){
     clear();
     if (mkdir("sdfs", 0777) == -1) { perror("bad dir"); exit(1);}

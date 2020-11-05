@@ -234,13 +234,13 @@ int TcpSocket::sendFile(int fd, string filename, string target){
 		bytes += partialR;
 	}
 	free(buffer);
-	cout << "FILEEND MATCHING = " << target << endl;
+	cout << "FILEEND NEEDS TO MATCH -> " << target << endl;
 	if (sendMessage(fd, FILEEND, target.c_str())) {
 		perror("write_server_put: send");
 		return -1;
 	}
 	if (shutdown(serverSocket, SHUT_WR)) {perror("shutdown"); exit(1);}
-	cout << to_string(bytes) << " bytes were sent from file " << filename;
+	cout << to_string(bytes) << " bytes were sent from file " << filename << endl;
 	pthread_mutex_lock(&traffic_mutex);
 	byteSent += bytes;
 	pthread_mutex_unlock(&traffic_mutex);
@@ -277,12 +277,10 @@ int TcpSocket::receiveFile(int fd, string file, int isCloud){
 			}
 			free(buffer);
 			return 0;
-		}
-		if (msg.type == FILEEND && msg.payload.compare(file)){
+		} else if (msg.type == FILEEND && msg.payload.compare(file)){
 			cout << "FILEEND FOUND WITH PAYLOAD " << msg.payload << endl;
 			cout << "FILENED EXPECTED " << file << endl;
-		}
-		if (msg.type == MISSING){
+		} else if (msg.type == MISSING){
 			fclose(f);
 			if (isCloud) remove(dir->get_path(tempFile).c_str());
 			else remove(file.c_str());
